@@ -375,8 +375,17 @@ button,select,input{font-family:inherit;cursor:pointer}
   }
 
   .tb-wins {
-    display: none;
-  }
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+}
+
+.tb-win {
+    font-size: 11px;
+    padding: 6px 10px;
+}
 
   /* Filters */
   #filterbar {
@@ -495,7 +504,7 @@ button,select,input{font-family:inherit;cursor:pointer}
       <div class="tb-date" id="tb-date">📅 —</div>
     </div>
     <div class="tb-wins">
-      <button class="tw on" data-w="1d" onclick="setWindow('1d',this)">Today</button>
+      <button class="tw on" data-w="1d" onclick="setWindow('5d',this)">Today</button>
       <button class="tw" data-w="yesterday" onclick="setWindow('yesterday',this)">Yesterday</button>
       <button class="tw" data-w="7d" onclick="setWindow('7d',this)">7d</button>
       <button class="tw" data-w="14d" onclick="setWindow('14d',this)">14d</button>
