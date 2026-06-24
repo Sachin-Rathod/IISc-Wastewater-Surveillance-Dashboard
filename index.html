@@ -318,8 +318,62 @@ button,select,input{font-family:inherit;cursor:pointer}
 .ft-left{font-size:9.5px;color:var(--muted)}
 .ft-right{font-size:9.5px;color:var(--muted);display:flex;gap:14px}
 
-@media(max-width:1200px){#row1{grid-template-columns:1fr 1fr}#row2{grid-template-columns:1fr 1fr}}
-@media(max-width:800px){#kpi-row{grid-template-columns:1fr 1fr}#row1,#row2,#row3{grid-template-columns:1fr}}
+@media (max-width: 1200px) {
+  #row1 {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  #row2 {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+
+  #dash {
+    padding: 10px;
+  }
+
+  #kpi-row {
+    grid-template-columns: 1fr;
+  }
+
+  #row1,
+  #row2,
+  #row3 {
+    grid-template-columns: 1fr;
+  }
+
+  #filterbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fsel,
+  .finp {
+    width: 100%;
+  }
+
+  .tb-title {
+    font-size: 14px;
+  }
+
+  .tb-sub {
+    font-size: 9px;
+  }
+
+  .tb-right {
+    display: none;
+  }
+
+  .kpi-val {
+    font-size: 24px;
+  }
+
+  .panel {
+    overflow-x: auto;
+  }
+}
 </style>
 </head>
 <body>
