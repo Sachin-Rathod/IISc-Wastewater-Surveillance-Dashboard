@@ -131,7 +131,7 @@ button,select,input{font-family:inherit;cursor:pointer}
 #dash{padding:20px 32px 28px;display:flex;flex-direction:column;gap:20px;background:linear-gradient(180deg,#fafbfc 0%,#f0f4f9 100%)}
 
 /* KPI strip */
-#kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:16px}
+#kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
 .kpi{background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;
   padding:22px 24px;box-shadow:0 2px 8px rgba(15,23,42,.04);position:relative;overflow:hidden;
   border-left:5px solid var(--navy2);transition:all .25s cubic-bezier(0.4,0,0.2,1)}
@@ -546,12 +546,6 @@ button,select,input{font-family:inherit;cursor:pointer}
       <div class="kpi-label">Pathogens Monitored</div>
       <div class="kpi-val" id="k-pathogens">—</div>
       <div class="kpi-sub" id="k-path-sub">Loaded from sheet columns</div>
-    </div>
-    <div class="kpi" style="border-top-color:#dc2626">
-      <div class="kpi-icon">⚠️</div>
-      <div class="kpi-label">High-Risk STPs</div>
-      <div class="kpi-val" id="k-highrisk" style="color:#dc2626">—</div>
-      <div class="kpi-sub" id="k-highrisk-sub">Risk score ≥ 0.65</div>
     </div>
   </div>
 
@@ -1645,9 +1639,6 @@ function renderKPIs(){
     (testedOnly.length? " · Tested neg: "+testedOnly.join(", "): "");
 
   var riskMap=computeRiskMap();
-  var highRisk=Object.values(riskMap).filter(function(v){return v>=0.65;}).length;
-  document.getElementById("k-highrisk").textContent=highRisk;
-  document.getElementById("k-highrisk-sub").textContent="Risk score ≥ 0.65";
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
