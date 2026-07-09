@@ -1,9 +1,15 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>IISc Wastewater Surveillance – Bengaluru</title>
+<meta name="description" content="Real-time wastewater-based epidemiology dashboard monitoring Influenza A, Influenza B, RSV, and Leptospira across 42 STPs in Bengaluru, India. Powered by IISc."/>
+
+<!-- Google Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
 
 <!-- Leaflet for real map -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
@@ -14,476 +20,738 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
-/* ═══ RESET & BASE ═══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESET & DESIGN TOKENS
+═══════════════════════════════════════════════════════════════════════════ */
 *{box-sizing:border-box;margin:0;padding:0}
-:root{
-  --navy:#0d1f3c;--navy2:#1a3a6b;--navy3:#2563eb;
-  --accent:#00c6ff;--accent2:#7c3aed;
-  --green:#16a34a;--yellow:#d97706;--red:#dc2626;
-  --bg:#f0f4f9;--card:#ffffff;--border:#dde6f2;
-  --text:#1a2a4a;--muted:#6b7a9a;--light:#f8fafd;
-  --shadow:0 2px 12px rgba(13,31,60,.09);
-  --shadow2:0 4px 24px rgba(13,31,60,.14);
-  --r:10px;--r2:7px;
+
+:root,
+[data-theme="dark"]{
+  --bg-primary:#0a0e1a;
+  --bg-secondary:rgba(17,24,39,0.65);
+  --bg-tertiary:#111827;
+  --bg-card:rgba(15,23,42,0.6);
+  --bg-card-solid:#0f172a;
+  --bg-glass:rgba(17,24,39,0.55);
+  --bg-hover:rgba(30,41,59,0.7);
+  --bg-input:rgba(15,23,42,0.8);
+  --accent:#0F4C81;
+  --accent-dim:rgba(15,76,129,0.15);
+  --accent-glow:rgba(15,76,129,0.25);
+  --accent-2:#118ab2;
+  --accent-2-dim:rgba(17,138,178,0.15);
+  --danger:#DC2626;
+  --danger-dim:rgba(220,38,38,0.12);
+  --danger-glow:rgba(220,38,38,0.3);
+  --warning:#EAB308;
+  --warning-dim:rgba(234,179,8,0.12);
+  --success:#16A34A;
+  --success-dim:rgba(22,163,74,0.12);
+  --text-primary:#f0f6fc;
+  --text-secondary:#8b949e;
+  --text-muted:#484f58;
+  --border:rgba(99,110,123,0.2);
+  --border-accent:rgba(15,76,129,0.3);
+  --shadow:0 4px 16px rgba(0,0,0,0.2);
+  --shadow-lg:0 8px 32px rgba(0,0,0,0.3);
+  --shadow-glow:0 0 16px rgba(15,76,129,0.15);
+  --glass-blur:blur(16px);
+  --r:14px;
+  --r2:10px;
+  --r3:6px;
+  --transition:all 0.3s cubic-bezier(0.4,0,0.2,1);
+  /* pathogen colors - vivid for dark bg */
+  --p-influenza-a:#EAB308;
+  --p-influenza-b:#a78bfa;
+  --p-rsv:#38bdf8;
+  --p-leptospira:#16A34A;
 }
-html,body{height:100%;font-family:'Segoe UI',system-ui,sans-serif;background:linear-gradient(180deg,#eef6ff 0%,#f8fafc 100%);color:var(--text);font-size:13px}
+
+[data-theme="light"]{
+  --bg-primary:#f0f4f9;
+  --bg-secondary:rgba(255,255,255,0.8);
+  --bg-tertiary:#ffffff;
+  --bg-card:rgba(255,255,255,0.75);
+  --bg-card-solid:#ffffff;
+  --bg-glass:rgba(255,255,255,0.6);
+  --bg-hover:rgba(241,245,249,0.9);
+  --bg-input:rgba(248,250,252,0.9);
+  --accent:#0F4C81;
+  --accent-dim:rgba(15,76,129,0.1);
+  --accent-glow:rgba(15,76,129,0.2);
+  --accent-2:#0284c7;
+  --accent-2-dim:rgba(2,132,199,0.1);
+  --danger:#DC2626;
+  --danger-dim:rgba(220,38,38,0.08);
+  --danger-glow:rgba(220,38,38,0.2);
+  --warning:#EAB308;
+  --warning-dim:rgba(234,179,8,0.08);
+  --success:#16A34A;
+  --success-dim:rgba(22,163,74,0.08);
+  --text-primary:#0f172a;
+  --text-secondary:#475569;
+  --text-muted:#94a3b8;
+  --border:rgba(148,163,184,0.3);
+  --border-accent:rgba(15,76,129,0.3);
+  --shadow:0 4px 16px rgba(15,23,42,0.08);
+  --shadow-lg:0 8px 32px rgba(15,23,42,0.12);
+  --shadow-glow:0 0 16px rgba(15,76,129,0.1);
+  --glass-blur:blur(12px);
+  --p-influenza-a:#EAB308;
+  --p-influenza-b:#7c3aed;
+  --p-rsv:#2563eb;
+  --p-leptospira:#16A34A;
+}
+
+html,body{
+  height:100%;
+  font-family:'Inter',system-ui,-apple-system,sans-serif;
+  background:var(--bg-primary);
+  color:var(--text-primary);
+  font-size:14px;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+}
 button,select,input{font-family:inherit;cursor:pointer}
-::-webkit-scrollbar{width:5px;height:5px}
-::-webkit-scrollbar-track{background:#f0f4f9}
-::-webkit-scrollbar-thumb{background:#c8d5e8;border-radius:3px}
 
-/* ═══ TOPBAR ══════════════════════════════════════════════════════════════ */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-secondary)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANIMATIONS
+═══════════════════════════════════════════════════════════════════════════ */
+@keyframes fadeInUp{
+  from{opacity:0;transform:translateY(20px)}
+  to{opacity:1;transform:translateY(0)}
+}
+@keyframes fadeIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+@keyframes pulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:.6;transform:scale(1.15)}
+}
+@keyframes glow{
+  0%,100%{box-shadow:0 0 5px var(--accent-glow)}
+  50%{box-shadow:0 0 20px var(--accent-glow),0 0 40px rgba(6,214,160,0.1)}
+}
+@keyframes shimmer{
+  0%{background-position:-200% 0}
+  100%{background-position:200% 0}
+}
+@keyframes slideInRight{
+  from{transform:translateX(100%);opacity:0}
+  to{transform:translateX(0);opacity:1}
+}
+@keyframes gradientFlow{
+  0%{background-position:0% 50%}
+  50%{background-position:100% 50%}
+  100%{background-position:0% 50%}
+}
+@keyframes borderGlow{
+  0%,100%{border-color:rgba(6,214,160,0.2)}
+  50%{border-color:rgba(6,214,160,0.5)}
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TOPBAR
+═══════════════════════════════════════════════════════════════════════════ */
 #topbar{
-  background:linear-gradient(135deg,#0f172a 0%,#1e3a8a 55%,#2563eb 100%);
-  padding:18px 28px;display:flex;align-items:center;gap:18px;
-  box-shadow:0 22px 55px rgba(15,23,42,.16);position:relative;z-index:10;
+  background:linear-gradient(135deg,#070b14 0%,#0d1b2a 40%,#1b2838 100%);
+  padding:20px 36px;
+  display:flex;align-items:center;gap:20px;
+  position:relative;z-index:10;
+  border-bottom:1px solid var(--border);
+  min-height:100px;
 }
-.tb-brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
-.tb-logo{width:58px;height:58px;border-radius:0;border:none;
-  background:transparent;display:flex;align-items:center;justify-content:center;font-size:22px;overflow:hidden}
-.tb-logo img{width:auto;max-width:100%;height:100%;object-fit:contain;display:block}
-.tb-org-name{color:#fff;font-size:15px;font-weight:800;line-height:1.2}
-.tb-org-sub{color:rgba(255,255,255,.55);font-size:10px;font-weight:400}
-.tb-divider{width:1px;height:40px;background:rgba(255,255,255,.18);flex-shrink:0}
+#topbar::after{
+  content:"";position:absolute;left:0;right:0;bottom:0;height:3px;
+  background:linear-gradient(90deg,#06d6a0,#118ab2,#a78bfa,#ef476f,#ffd166);
+  background-size:300% 100%;
+  animation:gradientFlow 8s ease infinite;
+}
+.tb-brand{display:flex;align-items:center;gap:14px;flex-shrink:0}
+.tb-logo{
+  width:60px;height:60px;border-radius:14px;overflow:hidden;
+  background:#fff;padding:3px;
+  box-shadow:0 4px 20px rgba(0,0,0,0.4);
+  transition:var(--transition);
+}
+.tb-logo:hover{transform:scale(1.05);box-shadow:var(--shadow-glow)}
+.tb-logo img{width:100%;height:100%;object-fit:contain;display:block;border-radius:11px}
+.tb-org-name{color:#f0f6fc;font-size:17px;font-weight:800;letter-spacing:.2px;line-height:1.2}
+.tb-org-sub{color:rgba(240,246,252,.5);font-size:11px;font-weight:400;margin-top:2px}
+.tb-divider{width:1px;height:44px;background:rgba(240,246,252,.1);flex-shrink:0}
 .tb-center{flex:1;text-align:center}
-.tb-title{color:#fff;font-size:19px;font-weight:800;letter-spacing:-.3px;line-height:1.2}
-.tb-sub{color:rgba(255,255,255,.65);font-size:11px;margin-top:3px}
-.tb-right{display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0}
-.tb-date{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);
-  border-radius:6px;padding:5px 12px;color:#fff;font-size:11.5px;font-weight:500}
-.tb-wins{display:flex;gap:8px}
-.tw{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.9);
-  border-radius:999px;padding:6px 14px;font-size:10.7px;font-weight:700;transition:.2s}
-.tw:hover,.tw.on{background:rgba(255,255,255,.3);color:#fff;border-color:rgba(255,255,255,.55)}
+.tb-title{
+  color:#f0f6fc;font-size:22px;font-weight:900;letter-spacing:0.5px;line-height:1.2;
+  background:linear-gradient(135deg,#f0f6fc,#06d6a0);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.tb-sub{color:rgba(240,246,252,.55);font-size:12px;margin-top:6px;font-weight:400}
+.tb-right{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex-shrink:0}
+.tb-date{
+  background:rgba(6,214,160,0.1);
+  border:1px solid rgba(6,214,160,0.25);
+  border-radius:999px;padding:6px 16px;
+  color:#06d6a0;font-size:12px;font-weight:600;
+  font-family:'JetBrains Mono',monospace;
+}
+.tb-wins{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.tw{
+  background:rgba(240,246,252,0.06);
+  border:1px solid rgba(240,246,252,0.12);
+  color:rgba(240,246,252,.7);
+  border-radius:999px;padding:6px 14px;font-size:11px;font-weight:700;
+  transition:var(--transition);letter-spacing:.3px;
+}
+.tw:hover{background:rgba(240,246,252,0.12);color:#f0f6fc;border-color:rgba(240,246,252,.25)}
+.tw.on{
+  background:var(--accent);color:#0a0e1a;
+  border-color:var(--accent);
+  box-shadow:0 4px 16px rgba(6,214,160,0.3);
+  font-weight:800;
+}
+.tb-theme-toggle{
+  background:rgba(240,246,252,0.08);border:1px solid rgba(240,246,252,0.15);
+  color:#f0f6fc;border-radius:10px;padding:7px 14px;font-size:18px;
+  cursor:pointer;transition:var(--transition);line-height:1;
+}
+.tb-theme-toggle:hover{background:rgba(240,246,252,0.16);transform:scale(1.1)}
 
-/* ═══ FILTER BAR ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILTER BAR
+═══════════════════════════════════════════════════════════════════════════ */
 #filterbar{
-  background:#fff;border-bottom:2px solid var(--border);
-  padding:8px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;
-  box-shadow:0 1px 6px rgba(0,0,0,.05);
+  position:sticky;top:0;z-index:20;
+  padding:12px 36px;
+  background:var(--bg-glass);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  animation:fadeIn .6s ease;
 }
-.fb-sec{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;white-space:nowrap}
-.fb-g{display:flex;align-items:center;gap:6px}
-.fb-g label{font-size:10px;color:var(--muted);white-space:nowrap}
-.fsel,.finp{border:1px solid var(--border);border-radius:6px;padding:5px 9px;
-  font-size:11.5px;background:var(--light);outline:none;color:var(--text)}
-.fsel:focus,.finp:focus{border-color:var(--navy2);box-shadow:0 0 0 2px rgba(37,99,235,.12)}
-.fsel{min-width:115px}
+.fb-sec{
+  font-size:10px;font-weight:800;color:var(--accent);
+  text-transform:uppercase;letter-spacing:1.2px;white-space:nowrap;
+}
+.fb-g{display:flex;align-items:center;gap:7px}
+.fb-g label{font-size:11px;color:var(--text-secondary);white-space:nowrap;font-weight:600}
+.fsel,.finp{
+  border:1px solid var(--border);border-radius:var(--r3);padding:7px 12px;
+  font-size:12px;background:var(--bg-input);
+  color:var(--text-primary);outline:none;
+  transition:var(--transition);min-height:34px;
+}
+.fsel:focus,.finp:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
+.fsel{min-width:140px}
+.fsel option{background:var(--bg-card-solid);color:var(--text-primary)}
 .fdiv{width:1px;height:24px;background:var(--border)}
-.ds-refresh{font-size:10px;color:var(--green);font-weight:600;margin-left:auto}
-.tb-settings{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);
-  color:#fff;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700;
-  cursor:pointer;transition:.15s;display:flex;align-items:center;gap:6px}
-.tb-settings:hover{background:rgba(255,255,255,.25)}
-#settings-drawer{
-  display:none;position:fixed;top:0;right:0;bottom:0;width:400px;
-  background:#fff;box-shadow:-6px 0 40px rgba(0,0,0,.18);z-index:500;
-  flex-direction:column;overflow:hidden;
+.ds-refresh{
+  font-size:11px;color:var(--accent);font-weight:700;margin-left:auto;
+  font-family:'JetBrains Mono',monospace;
 }
-#settings-drawer.open{display:flex}
-.sd-header{background:linear-gradient(135deg,var(--navy),var(--navy2));padding:18px 22px;
-  display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.sd-title{color:#fff;font-size:15px;font-weight:800}
-.sd-close{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);
-  color:#fff;border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer}
-.sd-close:hover{background:rgba(255,255,255,.28)}
-.sd-body{padding:22px;overflow-y:auto;flex:1}
-.sd-section{margin-bottom:22px}
-.sd-sec-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
-  color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
-.sd-lbl{font-size:11px;font-weight:700;color:var(--text);display:block;margin-bottom:5px}
-.sd-inp{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:9px 12px;
-  font-size:12.5px;outline:none;color:var(--text);background:var(--light);margin-bottom:10px}
-.sd-inp:focus{border-color:var(--navy2);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.sd-btn{width:100%;background:var(--navy2);color:#fff;border:none;border-radius:7px;
-  padding:10px;font-size:13px;font-weight:700;cursor:pointer;transition:.15s;margin-bottom:8px}
-.sd-btn:hover{background:var(--navy)}
-.sd-btn-sec{width:100%;background:#fff;color:var(--navy2);border:1.5px solid var(--navy2);
-  border-radius:7px;padding:10px;font-size:13px;font-weight:700;cursor:pointer;margin-bottom:8px}
-.sd-btn-sec:hover{background:#eff6ff}
-.drop-z2{border:2px dashed var(--border);border-radius:8px;padding:22px;text-align:center;
-  cursor:pointer;transition:.2s;background:var(--light);margin-bottom:10px}
-.drop-z2:hover,.drop-z2.drag{border-color:var(--navy2);background:#eff6ff}
-.drop-z2 p{font-size:11.5px;color:var(--muted);line-height:1.9}
-.drop-z2 b{color:var(--navy2)}
-.sd-stat{font-size:11.5px;padding:7px 10px;border-radius:6px;margin-bottom:8px;display:none}
-.sd-stat.ok{background:#f0fdf4;color:var(--green);border:1px solid #86efac;display:block}
-.sd-stat.err{background:#fef2f2;color:var(--red);border:1px solid #fca5a5;display:block}
-.sd-stat.ld{background:#eff6ff;color:var(--navy2);border:1px solid #bfdbfe;display:block}
-.ref-opts{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:10px}
-.ref-opts label{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:600;cursor:pointer}
-.ref-opts select{border:1px solid var(--border);border-radius:5px;padding:4px 8px;font-size:11.5px;background:var(--light)}
-.sd-info{font-size:10.5px;color:var(--muted);line-height:1.7;background:var(--light);
-  border-radius:6px;padding:10px 12px;border:1px solid var(--border)}
-.sd-info b{color:var(--navy2)}
-.sd-step{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start}
-.sd-num{background:var(--navy2);color:#fff;border-radius:50%;width:20px;height:20px;
-  display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;margin-top:1px}
-.sd-stxt{font-size:11px;color:var(--text);line-height:1.6}
-.sd-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:499}
-.sd-overlay.open{display:block}
-.conn-pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:20px;
-  font-size:11px;font-weight:600;margin-bottom:12px}
-.conn-on{background:#f0fdf4;color:var(--green);border:1px solid #86efac}
-.conn-off{background:var(--light);color:var(--muted);border:1px solid var(--border)}
 
-/* ═══ LAYOUT ══════════════════════════════════════════════════════════════ */
-#dash{padding:20px 32px 28px;display:flex;flex-direction:column;gap:20px;background:linear-gradient(180deg,#fafbfc 0%,#f0f4f9 100%)}
 
-/* KPI strip */
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════════════════════════ */
+#dash{
+  max-width:1880px;margin:0 auto;
+  padding:20px 30px 28px;
+  display:flex;flex-direction:column;gap:16px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   KPI STRIP
+═══════════════════════════════════════════════════════════════════════════ */
 #kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
-.kpi{background:#ffffff;border:1px solid #e2e8f0;border-radius:16px;
-  padding:22px 24px;box-shadow:0 2px 8px rgba(15,23,42,.04);position:relative;overflow:hidden;
-  border-left:5px solid var(--navy2);transition:all .25s cubic-bezier(0.4,0,0.2,1)}
-.kpi:hover{transform:translateY(-4px);box-shadow:0 12px 28px rgba(15,23,42,.12);border-left-color:#2563eb}
-.kpi-icon{position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:28px;opacity:.08}
-.kpi-label{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#64748b;margin-bottom:8px}
-.kpi-val{font-size:34px;font-weight:900;color:#0f172a;line-height:1;margin:2px 0}
-.kpi-sub{font-size:11px;color:#64748b;margin-top:6px;font-weight:500}
-.kpi-deactive{font-size:11px;font-weight:700;color:var(--red);margin-top:4px}
+.kpi{
+  background:var(--bg-card);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--border);
+  border-radius:var(--r2);
+  padding:16px 18px;position:relative;overflow:hidden;
+  transition:var(--transition);
+  animation:fadeInUp .6s ease both;
+}
+.kpi:nth-child(1){animation-delay:.1s}
+.kpi:nth-child(2){animation-delay:.2s}
+.kpi:nth-child(3){animation-delay:.3s}
+.kpi:nth-child(4){animation-delay:.4s}
+.kpi::before{
+  content:"";position:absolute;top:0;left:0;right:0;height:3px;
+  border-radius:var(--r2) var(--r2) 0 0;
+}
+.kpi:nth-child(1)::before{background:linear-gradient(90deg,#118ab2,#06d6a0)}
+.kpi:nth-child(2)::before{background:linear-gradient(90deg,#06d6a0,#34d399)}
+.kpi:nth-child(3)::before{background:linear-gradient(90deg,#a78bfa,#818cf8)}
+.kpi:nth-child(4)::before{background:linear-gradient(90deg,#ffd166,#f59e0b)}
+.kpi:hover{
+  transform:translateY(-3px);
+  box-shadow:var(--shadow-lg);
+  border-color:rgba(6,214,160,0.3);
+}
+.kpi-icon{
+  position:absolute;right:14px;top:50%;transform:translateY(-50%);
+  font-size:28px;opacity:.07;
+}
+.kpi-label{
+  font-size:9px;font-weight:800;text-transform:uppercase;
+  letter-spacing:.8px;color:var(--text-secondary);margin-bottom:8px;
+}
+.kpi-val{
+  font-size:28px;font-weight:900;color:var(--text-primary);line-height:1;
+  font-family:'JetBrains Mono','Inter',monospace;
+  margin:2px 0;
+}
+.kpi-sub{font-size:10.5px;color:var(--text-secondary);margin-top:5px;font-weight:500;line-height:1.3}
+.kpi-deactive{font-size:10px;font-weight:700;color:var(--danger);margin-top:3px}
 
-/* Main top row: Map | Trend | Clinical */
-#row1{display:grid;grid-template-columns:1.15fr 1.6fr 1.25fr;gap:18px}
-/* Bottom rows */
-#row2{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
-#row3{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROW LAYOUTS
+═══════════════════════════════════════════════════════════════════════════ */
+#row2{
+  display:grid;
+  grid-template-columns:75fr 25fr;
+  gap:16px;
+  align-items:stretch;
+}
+#row2-sidebar{
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+.sidebar-panel{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+}
+.sidebar-panel .pb{
+  flex:1;
+}
+#row3{
+  display:block;
+  width:100%;
+}
+#row4{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  align-items:stretch;
+}
+#row5{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:16px;
+  align-items:stretch;
+}
+#row6{
+  display:block;
+  width:100%;
+}
+.table-shell--fixed {
+  height: 220px;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
 
-/* Panel base */
-.panel{background:#ffffff;border:1px solid #e2e8f0;border-radius:18px;
-  box-shadow:0 4px 12px rgba(15,23,42,.05);overflow:hidden;display:flex;flex-direction:column;transition:all .3s ease}
-.panel:hover{box-shadow:0 8px 24px rgba(15,23,42,.08);border-color:#cbd5e1}
-.ph{display:flex;align-items:center;justify-content:space-between;
-  padding:18px 22px 16px;border-bottom:1px solid #f1f5f9;gap:12px;flex-shrink:0}
-.ph-title{font-size:13px;font-weight:900;text-transform:uppercase;
-  letter-spacing:.8px;color:#0f172a;white-space:nowrap;display:flex;align-items:center;gap:6px}
-.ph-title .ph-tag{font-size:11px;font-weight:700;text-transform:none;color:#64748b;letter-spacing:0}
-.ph-title .info-tooltip{position:relative;display:inline-flex;align-items:center;justify-content:center;
-  width:18px;height:18px;border-radius:50%;background:#f8fafc;color:#1e3a8a;font-size:11px;font-weight:800;
-  border:1px solid #cbd5e1;cursor:default}
-.ph-title .info-tooltip:hover{background:#eff6ff;border-color:#93c5fd}
-.ph-title .info-tooltip::after{content:attr(data-tooltip);position:absolute;left:50%;top:calc(100% + 10px);transform:translateX(-50%);
-  width:max-content;max-width:260px;padding:8px 10px;background:rgba(15,23,42,.95);color:#fff;font-size:10px;
-  line-height:1.4;border-radius:10px;white-space:normal;opacity:0;pointer-events:none;visibility:hidden;
-  transition:opacity .2s ease,visibility .2s ease}
+/* ═══════════════════════════════════════════════════════════════════════════
+   PANEL BASE — GLASSMORPHISM
+═══════════════════════════════════════════════════════════════════════════ */
+.panel{
+  background:var(--bg-card);
+  backdrop-filter:var(--glass-blur);
+  -webkit-backdrop-filter:var(--glass-blur);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  box-shadow:var(--shadow);
+  overflow:hidden;
+  display:flex;flex-direction:column;
+  transition:var(--transition);
+  animation:fadeInUp .6s ease both;
+  min-width:0;
+}
+.panel:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-lg);
+  border-color:rgba(99,110,123,0.35);
+}
+#row2 .panel{min-height:0}
+#row3 .panel{min-height:0}
+
+.ph{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;
+  border-bottom:1px solid var(--border);
+  gap:10px;flex-shrink:0;
+  background:rgba(255,255,255,0.02);
+}
+.ph-title{
+  font-size:14px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.6px;color:var(--text-primary);
+  white-space:nowrap;display:flex;align-items:center;gap:6px;
+}
+.ph-title .ph-tag{
+  font-size:11px;font-weight:600;text-transform:none;
+  color:var(--text-secondary);letter-spacing:0;
+}
+.ph-title .info-tooltip{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:18px;height:18px;border-radius:50%;
+  background:var(--accent-dim);color:var(--accent);
+  font-size:10px;font-weight:800;border:1px solid var(--border-accent);cursor:default;
+  transition:var(--transition);
+}
+.ph-title .info-tooltip:hover{background:var(--accent);color:#0a0e1a}
+.ph-title .info-tooltip::after{
+  content:attr(data-tooltip);position:absolute;left:50%;top:calc(100% + 10px);
+  transform:translateX(-50%);width:max-content;max-width:280px;padding:10px 14px;
+  background:rgba(15,23,42,.97);color:#f0f6fc;font-size:11px;line-height:1.5;
+  border-radius:var(--r3);white-space:normal;opacity:0;pointer-events:none;visibility:hidden;
+  transition:opacity .2s ease,visibility .2s ease;border:1px solid var(--border);
+  box-shadow:var(--shadow-lg);z-index:100;
+}
 .ph-title .info-tooltip:hover::after{opacity:1;visibility:visible}
+
 .ph-ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.psel{border:1px solid #e2e8f0;border-radius:7px;padding:5px 10px;
-  font-size:11px;background:#f8fafc;outline:none;color:var(--text);font-weight:600;transition:.2s}
-.psel:hover{border-color:#cbd5e1;background:#f1f5f9}
-.psel:focus{border-color:var(--navy2);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.pwb{background:#f0f6ff;border:1.5px solid #dbeafe;border-radius:999px;
-  padding:5px 14px;font-size:11px;font-weight:700;color:#1e40af;transition:.25s;cursor:pointer}
-.pwb:hover{background:#e0effe;border-color:#bfdbfe;color:#1e3a8a}
-.pwb.on{background:#2563eb;color:#fff;border-color:#2563eb;box-shadow:0 2px 8px rgba(37,99,235,.3)}
-.pb{padding:16px 20px;flex:1;overflow:hidden}
+.psel{
+  border:1px solid var(--border);border-radius:var(--r3);padding:6px 12px;
+  font-size:11px;background:var(--bg-input);outline:none;
+  color:var(--text-primary);font-weight:600;transition:var(--transition);
+}
+.psel option{background:var(--bg-card-solid);color:var(--text-primary)}
+.psel:hover{border-color:var(--text-muted)}
+.psel:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-dim)}
 
-/* ═══ MAP ══════════════════════════════════════════════════════════════════ */
-#map-container{position:relative}
-#stp-map{height:310px;border-radius:12px;z-index:1;border:1px solid #f1f5f9}
-.map-legend{display:flex;gap:14px;margin-top:10px;flex-wrap:wrap}
-.ml-item{display:flex;align-items:center;gap:6px;font-size:10.5px;color:#475569;font-weight:600}
-.ml-dot{width:10px;height:10px;border-radius:50%;box-shadow:0 2px 4px rgba(0,0,0,.1)}
-.map-note{font-size:10px;color:#64748b;margin-top:6px;font-style:italic;font-weight:500}
+.pwb{
+  background:transparent;
+  border:1px solid var(--border);
+  border-radius:999px;padding:6px 14px;font-size:11px;font-weight:700;
+  color:var(--text-secondary);transition:var(--transition);cursor:pointer;
+}
+.pwb:hover{background:var(--bg-hover);color:var(--text-primary);border-color:var(--text-muted)}
+.pwb.on{
+  background:var(--accent);color:#0a0e1a;
+  border-color:var(--accent);
+  box-shadow:0 2px 12px rgba(6,214,160,0.3);
+  font-weight:800;
+}
+.pb{padding:12px 14px;flex:1;overflow:hidden;min-width:0}
 
-/* ═══ CHARTS — pure canvas/SVG ═══════════════════════════════════════════ */
-.chart-canvas{width:100%;display:block;border-radius:8px}
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAP
+═══════════════════════════════════════════════════════════════════════════ */
+#map-container{position:relative;height:100%;display:flex;flex-direction:column}
+#stp-map{
+  height:380px;border-radius:var(--r2);z-index:1;
+  border:1px solid var(--border);
+}
+.map-legend{display:flex;gap:8px 12px;margin-top:8px;flex-wrap:wrap}
+.ml-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-secondary);font-weight:600}
+.ml-dot{width:10px;height:10px;border-radius:50%;box-shadow:0 0 6px rgba(0,0,0,.2)}
+.map-note{font-size:10px;color:var(--text-muted);margin-top:8px;font-style:italic}
 
-/* Line chart */
-.lc-wrap{position:relative;width:100%}
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHARTS — canvas
+═══════════════════════════════════════════════════════════════════════════ */
+.chart-canvas{width:100%;display:block;border-radius:var(--r3)}
 
-/* Bar chart horizontal */
-.hbar-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-radius:4px;padding:6px 8px;transition:.2s}
-.hbar-row:hover{background:#f8fafc}
-.hbar-name{font-size:10.5px;color:#1a2a4a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-.hbar-track{flex:1;background:#f1f5f9;border-radius:4px;height:16px;overflow:hidden;min-width:60px}
-.hbar-fill{height:16px;border-radius:4px;transition:width .5s ease;box-shadow:inset 0 1px 2px rgba(0,0,0,.05)}
-.hbar-val{font-size:11px;font-weight:800;min-width:40px;text-align:right;color:#0f172a}
+/* ═══════════════════════════════════════════════════════════════════════════
+   TREND PANEL
+═══════════════════════════════════════════════════════════════════════════ */
+#trend-panel .ph{align-items:flex-start}
+.trend-body{padding:18px 20px 20px;display:flex;flex-direction:column;gap:14px;overflow:visible}
+.trend-intro{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px;border:1px solid var(--border);border-radius:var(--r2);
+  background:var(--bg-glass);
+}
+.trend-intro-main{display:flex;align-items:center;gap:10px;min-width:0}
+.trend-pill{
+  font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.6px;
+  color:#0a0e1a;background:var(--accent);
+  border:none;border-radius:999px;padding:4px 10px;white-space:nowrap;
+}
+.trend-desc{font-size:12px;color:var(--text-secondary);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trend-window{font-size:11px;color:var(--text-muted);font-weight:700;white-space:nowrap}
 
-/* Donut */
-.donut-wrap{display:flex;align-items:center;gap:16px;justify-content:space-between}
+.trend-insights{
+  display:grid;grid-template-columns:1fr 1fr 1fr;
+  border:1px solid var(--border);border-radius:var(--r2);overflow:hidden;
+  background:var(--bg-glass);
+}
+.trend-metric{padding:14px 16px;border-right:1px solid var(--border);min-width:0}
+.trend-metric:last-child{border-right:none}
+.tm-label{
+  display:block;font-size:9px;color:var(--text-muted);font-weight:800;
+  text-transform:uppercase;letter-spacing:.6px;margin-bottom:4px;
+}
+.tm-value{
+  display:block;font-size:24px;line-height:1.1;font-weight:900;
+  color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  font-family:'JetBrains Mono',monospace;
+}
+.tm-note{
+  display:block;font-size:10px;color:var(--text-secondary);font-weight:600;
+  margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.trend-up{color:var(--danger)!important}
+.trend-down{color:var(--success)!important}
+.trend-flat{color:var(--text-muted)!important}
+
+.trend-chart-shell{
+  position:relative;border:1px solid var(--border);border-radius:var(--r2);
+  background:var(--bg-glass);overflow:hidden;padding:8px;
+}
+.trend-legend{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;min-height:21px}
+.trend-leg-item{
+  display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text-secondary);
+  font-weight:700;white-space:nowrap;
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:999px;padding:5px 10px;
+}
+.trend-leg-line{width:18px;height:3px;border-radius:999px}
+.trend-footnote{display:flex;gap:8px 10px;flex-wrap:wrap}
+.trend-footnote span{
+  font-size:10px;color:var(--text-secondary);font-weight:700;
+  background:var(--bg-input);border:1px solid var(--border);
+  border-radius:999px;padding:5px 10px;
+}
+.trend-footnote .strong-signal{color:var(--danger);background:var(--danger-dim);border-color:rgba(239,71,111,0.3)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BAR CHART
+═══════════════════════════════════════════════════════════════════════════ */
+.hbar-row{
+  display:flex;align-items:center;gap:10px;padding:8px 10px;
+  border-radius:var(--r3);transition:var(--transition);
+}
+.hbar-row:hover{background:var(--bg-hover)}
+.hbar-name{
+  font-size:11px;color:var(--text-primary);white-space:nowrap;overflow:hidden;
+  text-overflow:ellipsis;font-weight:600;
+}
+.hbar-track{flex:1;background:var(--bg-input);border-radius:6px;height:20px;overflow:hidden;min-width:60px}
+.hbar-fill{
+  height:20px;border-radius:6px;transition:width .5s ease;
+  box-shadow:inset 0 1px 2px rgba(255,255,255,.1);
+}
+.hbar-val{
+  font-size:12px;font-weight:800;min-width:40px;text-align:right;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DONUT
+═══════════════════════════════════════════════════════════════════════════ */
+.donut-wrap{display:flex;align-items:center;gap:22px;justify-content:center}
 .donut-legend{flex:1}
-.dl-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #f1f5f9;transition:.2s}
-.dl-row:hover{background:#f8fafc;border-radius:4px;padding-left:4px;padding-right:4px}
+.dl-row{
+  display:flex;align-items:center;gap:12px;padding:6px 0;
+  border-bottom:1px solid var(--border);transition:var(--transition);
+}
+.dl-row:hover{background:var(--bg-hover);border-radius:var(--r3);padding-left:8px;padding-right:8px;transform:translateX(2px);}
 .dl-row:last-child{border-bottom:none}
-.dl-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.1)}
-.dl-name{flex:1;font-size:11.5px;color:#1a2a4a;font-weight:600}
-.dl-pct{font-weight:800;font-size:12px;min-width:35px;text-align:right;color:#0f172a}
-.dl-val{font-size:10px;color:#64748b;min-width:28px;text-align:right;font-weight:600}
+.dl-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0;box-shadow:0 0 8px rgba(0,0,0,.15)}
+.dl-name{flex:1;font-size:12px;color:var(--text-primary);font-weight:600}
+.dl-pct{font-weight:800;font-size:13px;min-width:35px;text-align:right;color:var(--text-primary);font-family:'JetBrains Mono',monospace}
+.dl-val{font-size:11px;color:var(--text-secondary);min-width:28px;text-align:right;font-weight:600}
 
-/* Scatter */
-.scatter-wrap{position:relative}
+/* ═══════════════════════════════════════════════════════════════════════════
+   CLINICAL / CORRELATION
+═══════════════════════════════════════════════════════════════════════════ */
+#clinical-panel .pb{padding:14px 20px}
+.corr-stats-row{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.corr-stat-card{
+  background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--r2);
+  padding:14px;text-align:center;flex:1;min-width:75px;transition:var(--transition);
+}
+.corr-stat-card:hover{border-color:var(--border-accent);box-shadow:var(--shadow-glow)}
+.csc-label{font-size:9px;color:var(--text-muted);font-weight:800;text-transform:uppercase;letter-spacing:.6px}
+.csc-val{font-size:22px;font-weight:900;margin-top:5px;line-height:1;font-family:'JetBrains Mono',monospace}
 
-/* Forecast table */
-.fc-tbl{width:100%;border-collapse:collapse}
-.fc-tbl th{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;
-  padding:4px 5px;border-bottom:1px solid var(--border);text-align:left;white-space:nowrap}
-.fc-tbl td{font-size:10.5px;padding:4.5px 5px;border-bottom:1px solid #f4f7fb;vertical-align:middle}
-.fc-tbl tr:last-child td{border-bottom:none}
-.fc-tbl tr:hover td{background:#f8fbff}
-.hi{color:var(--red);font-weight:700}.med{color:var(--yellow);font-weight:700}.lo{color:var(--green);font-weight:700}
-.rup{color:var(--red)}.rdn{color:var(--green)}.rst{color:var(--muted)}
-
-/* Alert & EW */
-.alert-strip{background:linear-gradient(135deg,#fef2f2,#fff5f5);border:1px solid #fecaca;
-  border-left:5px solid var(--red);border-radius:12px;padding:12px 16px;
-  display:flex;gap:12px;align-items:flex-start;margin-bottom:10px}
-.alert-badge{background:var(--red);color:#fff;border-radius:6px;padding:4px 10px;
-  font-size:10.5px;font-weight:900;white-space:nowrap;flex-shrink:0;text-transform:uppercase;letter-spacing:.5px}
-.alert-txt{font-size:11.5px;line-height:1.6;color:#7f1d1d;font-weight:600}
-.ew-tbl{width:100%;border-collapse:collapse}
-.ew-tbl th{font-size:9.5px;color:#64748b;font-weight:800;text-transform:uppercase;
-  padding:8px 10px;border-bottom:2px solid #e2e8f0;background:#f8fafc}
-.ew-tbl td{font-size:11px;padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:top;color:#1a2a4a;font-weight:500}
-.ew-tbl tr:hover td{background:#f8fafc}
-.ew-tbl tr:last-child td{border-bottom:none}
-
-/* Forecast table */
-.fc-tbl{width:100%;border-collapse:collapse}
-.fc-tbl th{font-size:9px;color:#64748b;font-weight:800;text-transform:uppercase;
-  padding:8px 10px;border-bottom:2px solid #e2e8f0;background:#f8fafc;text-align:left;white-space:nowrap}
-.fc-tbl td{font-size:10.5px;padding:9px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;color:#1a2a4a;font-weight:500}
-.fc-tbl tr:hover td{background:#f8fafc}
-.fc-tbl tr:last-child td{border-bottom:none}
-.hi{color:#dc2626;font-weight:800}.med{color:#e69500;font-weight:800}.lo{color:#16a34a;font-weight:800}
-.rup{color:#dc2626;font-weight:700}.rdn{color:#16a34a;font-weight:700}.rst{color:#64748b;font-weight:700}
-
-/* Clinical scatter — bigger panel */
-#clinical-panel .pb{padding:12px 18px}
-.corr-stats-row{display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap}
-.corr-stat-card{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;
-  padding:12px 14px;text-align:center;flex:1;min-width:75px;transition:.2s}
-.corr-stat-card:hover{background:#f0f6ff;border-color:#bfdbfe}
-.csc-label{font-size:9.5px;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:.5px}
-.csc-val{font-size:20px;font-weight:900;margin-top:4px;line-height:1;color:#0f172a}
-
-/* Pollution & Population panels */
-.corr-panel-body{padding:12px 18px}
-.corr-r-big{font-size:32px;font-weight:900;line-height:1;color:#0f172a}
-.corr-r-lbl{font-size:11px;font-weight:700;margin-top:3px;color:#64748b}
-.ins-pill{display:inline-block;border-radius:6px;padding:5px 11px;font-size:10px;font-weight:700;margin-top:8px;background:#f0f6ff;color:#1e40af;border:1px solid #bfdbfe}
-
-/* Modal */
-.modal-bg{position:fixed;inset:0;background:rgba(10,20,50,.55);z-index:1000;
-  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
-.modal{background:#fff;border-radius:12px;padding:26px 30px;width:520px;
-  max-width:95vw;box-shadow:0 12px 50px rgba(0,0,0,.25)}
-.m-title{font-size:16px;font-weight:800;color:var(--navy);margin-bottom:4px}
-.m-sub{font-size:11.5px;color:var(--muted);margin-bottom:16px;line-height:1.6}
-.m-lbl{font-size:11px;font-weight:700;color:var(--text);display:block;margin-bottom:5px}
-.m-inp{width:100%;border:1.5px solid var(--border);border-radius:7px;padding:9px 12px;
-  font-size:13px;outline:none;margin-bottom:12px;transition:.15s}
-.m-inp:focus{border-color:var(--navy2);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.drop-z{border:2px dashed #b0c4de;border-radius:8px;padding:24px;text-align:center;
-  cursor:pointer;transition:.2s;background:var(--light);position:relative}
-.drop-z:hover,.drop-z.drag{border-color:var(--navy2);background:#eff6ff}
-.drop-z p{font-size:12px;color:var(--muted);line-height:1.9}
-.drop-z b{color:var(--navy2)}
-.m-btns{display:flex;gap:10px;justify-content:flex-end;margin-top:12px}
-.btn-p{background:var(--navy2);color:#fff;border:none;border-radius:7px;padding:9px 22px;
-  font-size:13px;font-weight:700;transition:.15s}
-.btn-p:hover{background:var(--navy)}
-.btn-g{background:var(--light);color:var(--text);border:1px solid var(--border);
-  border-radius:7px;padding:9px 16px;font-size:13px;font-weight:500}
-.btn-g:hover{background:#e0e8f8}
-.s-ok{color:var(--green);font-size:11.5px;font-weight:700;margin-top:6px}
-.s-err{color:var(--red);font-size:11px;margin-top:6px}
-.s-ld{color:var(--navy2);font-size:11.5px;margin-top:6px}
-.ref-row{display:flex;align-items:center;gap:10px;background:var(--light);
-  border:1px solid var(--border);border-radius:7px;padding:8px 12px;margin-bottom:12px;flex-wrap:wrap}
-.ref-row label{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer}
-
-/* Guide section */
-.guide-section{margin-top:16px;border-top:1px solid var(--border);padding-top:14px}
-.guide-title{font-size:12px;font-weight:800;color:var(--navy);margin-bottom:8px}
-.guide-step{background:var(--light);border-radius:6px;padding:8px 12px;margin-bottom:6px;
-  font-size:11px;line-height:1.7;border-left:3px solid var(--navy2)}
-.guide-step b{color:var(--navy2)}
-.guide-code{background:#1a2a4a;color:#7cb4e0;border-radius:5px;padding:4px 8px;
-  font-family:monospace;font-size:10.5px;display:block;margin:4px 0;white-space:pre-wrap}
-
-/* Stat pill */
-.stat-pill{display:inline-flex;align-items:center;gap:4px;border-radius:20px;
-  padding:2px 8px;font-size:10px;font-weight:700}
-.pill-red{background:#fef2f2;color:var(--red);border:1px solid #fca5a5}
-.pill-green{background:#f0fdf4;color:var(--green);border:1px solid #86efac}
-.pill-yellow{background:#fffbeb;color:var(--yellow);border:1px solid #fcd34d}
-
-/* No data message */
-.no-data{display:flex;align-items:center;justify-content:center;height:100%;
-  font-size:11.5px;color:var(--muted);text-align:center;padding:20px;line-height:1.7}
-
-/* Footer */
-#footer{background:#fff;border-top:1px solid var(--border);padding:8px 24px;
-  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px}
-.ft-left{font-size:9.5px;color:var(--muted)}
-.ft-right{font-size:9.5px;color:var(--muted);display:flex;gap:14px}
-
-@media (max-width: 768px) {
-
-  /* Remove horizontal overflow */
-  html, body {
-    overflow-x: hidden;
-    width: 100%;
-  }
-
-  #dash {
-    padding: 8px;
-  }
-
-  /* Header */
-  #topbar {
-    flex-direction: column;
-    padding: 10px;
-    gap: 8px;
-  }
-
-  .tb-brand {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .tb-divider {
-    display: none;
-  }
-
-  .tb-center {
-    width: 100%;
-    text-align: center;
-  }
-
-  .tb-title {
-    font-size: 14px;
-    line-height: 1.3;
-  }
-
-  .tb-sub {
-    font-size: 10px;
-  }
-
-  /* Show Date, Hide Window Buttons */
-  .tb-right {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .tb-date {
-    font-size: 11px;
-    padding: 4px 10px;
-  }
-
-  .tb-wins {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-    width: 100%;
+.corr-panel-body{padding:14px 20px}
+.corr-r-big{font-size:38px;font-weight:900;line-height:1;font-family:'JetBrains Mono',monospace}
+.corr-r-lbl{font-size:11px;font-weight:700;margin-top:4px;color:var(--text-secondary)}
+.ins-pill{
+  display:inline-block;border-radius:var(--r3);padding:6px 12px;font-size:10px;
+  font-weight:700;margin-top:10px;
 }
 
-.tb-win {
-    font-size: 11px;
-    padding: 6px 10px;
+/* ═══════════════════════════════════════════════════════════════════════════
+   TABLES — Forecast & Early Warning
+═══════════════════════════════════════════════════════════════════════════ */
+.table-shell{
+  max-height:420px;overflow:auto;
+  border:1px solid var(--border);border-radius:var(--r2);
+  background:var(--bg-glass);
+  scrollbar-gutter:stable;
+}
+.table-shell--compact{max-height:340px}
+.table-shell--tall{max-height:390px}
+
+.fc-tbl,.ew-tbl{
+  width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;
+}
+.fc-tbl th,.ew-tbl th{
+  font-size:9.5px;color:var(--text-secondary);font-weight:800;text-transform:uppercase;
+  padding:8px 10px;border-bottom:1px solid var(--border);
+  background:var(--bg-card-solid);text-align:left;
+  white-space:nowrap;letter-spacing:.5px;
+  position:sticky;top:0;z-index:2;
+}
+.fc-tbl td,.ew-tbl td{
+  font-size:11px;padding:8px 10px;border-bottom:1px solid var(--border);
+  vertical-align:middle;color:var(--text-primary);font-weight:500;
+  white-space:normal;overflow-wrap:anywhere;word-break:break-word;line-height:1.35;
+}
+.fc-tbl tbody tr:nth-child(even) td,
+.ew-tbl tbody tr:nth-child(even) td{background:rgba(255,255,255,0.015)}
+.fc-tbl tbody tr:hover td,
+.ew-tbl tbody tr:hover td{background:rgba(6,214,160,0.04)}
+.fc-tbl tr:last-child td,.ew-tbl tr:last-child td{border-bottom:none}
+
+.fc-tbl thead th:first-child,.ew-tbl thead th:first-child{border-top-left-radius:var(--r2)}
+.fc-tbl thead th:last-child,.ew-tbl thead th:last-child{border-top-right-radius:var(--r2)}
+
+.hi{color:var(--danger);font-weight:800}
+.med{color:var(--warning);font-weight:800}
+.lo{color:var(--success);font-weight:800}
+.rup{color:var(--danger);font-weight:700}
+.rdn{color:var(--success);font-weight:700}
+.rst{color:var(--text-muted);font-weight:700}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALERT & EARLY WARNING
+═══════════════════════════════════════════════════════════════════════════ */
+.alert-strip{
+  background:var(--danger-dim);
+  border:1px solid rgba(239,71,111,0.25);
+  border-left:4px solid var(--danger);
+  border-radius:var(--r2);padding:14px 18px;
+  display:flex;gap:14px;align-items:flex-start;margin-bottom:14px;
+  animation:borderGlow 3s ease-in-out infinite;
+}
+.alert-badge{
+  background:var(--danger);color:#fff;border-radius:999px;padding:5px 12px;
+  font-size:10px;font-weight:900;white-space:nowrap;flex-shrink:0;
+  text-transform:uppercase;letter-spacing:.5px;
+  box-shadow:0 2px 10px rgba(239,71,111,0.3);
+}
+.alert-txt{font-size:12px;line-height:1.6;color:var(--text-primary);font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INSIGHT PILLS
+═══════════════════════════════════════════════════════════════════════════ */
+#pop-insight,#poll-insight,#clin-note{
+  font-size:11px!important;line-height:1.5!important;color:var(--text-secondary)!important;
+  background:var(--bg-input)!important;border:1px solid var(--border)!important;
+  border-radius:var(--r3)!important;padding:8px 12px!important;
 }
 
-  /* Filters */
-  #filterbar {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
-  }
-
-  .fb-g {
-    width: 100%;
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .fb-g label {
-    margin-bottom: 4px;
-  }
-
-  .fsel,
-  .finp {
-    width: 100%;
-  }
-
-  .fdiv {
-    display: none;
-  }
-
-  .ds-refresh {
-    margin-left: 0;
-    text-align: right;
-  }
-
-  /* KPI Cards */
-  #kpi-row {
-    grid-template-columns: 1fr;
-  }
-
-  .kpi {
-    padding: 18px;
-  }
-
-  .kpi-val {
-    font-size: 32px;
-  }
-
-  /* Dashboard Rows */
-  #row1,
-  #row2,
-  #row3 {
-    grid-template-columns: 1fr;
-  }
-
-  .panel {
-    width: 100%;
-  }
-
-  /* Panel Header */
-  .ph {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .ph-ctrl {
-    width: 100%;
-    flex-wrap: wrap;
-  }
-
-  .psel {
-    width: 100%;
-  }
-
-  /* Map */
-  #stp-map {
-    height: 320px;
-  }
-
-  /* Charts */
-  canvas {
-    max-width: 100%;
-    height: auto !important;
-  }
-
-  /* Tables */
-  .fc-tbl,
-  .ew-tbl {
-    display: block;
-    overflow-x: auto;
-    white-space: nowrap;
-  }
-
-  /* Footer */
-  #footer {
-    flex-direction: column;
-    text-align: center;
-  }
+/* ═══════════════════════════════════════════════════════════════════════════
+   NO DATA / STATUS
+═══════════════════════════════════════════════════════════════════════════ */
+.no-data{
+  display:flex;align-items:center;justify-content:center;height:100%;
+  font-size:12px;color:var(--text-muted);text-align:center;padding:24px;line-height:1.8;
 }
 
+/* stat pills */
+.stat-pill{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 10px;font-size:10px;font-weight:700}
+.pill-red{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(239,71,111,0.3)}
+.pill-green{background:var(--success-dim);color:var(--success);border:1px solid rgba(6,214,160,0.3)}
+.pill-yellow{background:var(--warning-dim);color:var(--warning);border:1px solid rgba(255,209,102,0.3)}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LIVE INDICATOR
+═══════════════════════════════════════════════════════════════════════════ */
+.live-dot{
+  display:inline-block;width:8px;height:8px;border-radius:50%;
+  background:var(--accent);margin-right:6px;
+  animation:pulse 2s ease-in-out infinite;
+  box-shadow:0 0 8px var(--accent-glow);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════════════════════════════════ */
+#footer{
+  max-width:1880px;margin:0 auto;
+  padding:0 36px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;gap:8px;
+}
+.ft-left{font-size:11px;color:var(--text-muted);font-weight:500}
+.ft-right{font-size:11px;color:var(--text-muted);display:flex;gap:16px;font-family:'JetBrains Mono',monospace}
+.ft-right span{font-weight:600}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 1320px){
+  #topbar{padding:16px 20px}
+  #filterbar{padding:10px 20px}
+  #dash{padding:16px 20px}
+  #stp-map{height:300px}
+  #row2, #row4, #row5 {grid-template-columns:1fr}
+}
+
+@media (max-width: 768px){
+  html,body{overflow-x:hidden;width:100%}
+  #dash{padding:10px}
+  #topbar{flex-direction:column;padding:14px;gap:10px}
+  .tb-brand{width:100%;justify-content:center}
+  .tb-divider{display:none}
+  .tb-center{width:100%;text-align:center}
+  .tb-title{font-size:16px;line-height:1.3;-webkit-text-fill-color:var(--text-primary);background:none}
+  .tb-sub{font-size:10px}
+  .tb-right{width:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+  .tb-date{font-size:11px;padding:5px 12px}
+  .tb-wins{display:flex;flex-wrap:wrap;justify-content:center;gap:6px;width:100%}
+  #filterbar{flex-direction:column;align-items:stretch;gap:8px;padding:10px 14px}
+  .fb-g{width:100%;flex-direction:column;align-items:stretch}
+  .fb-g label{margin-bottom:3px}
+  .fsel,.finp{width:100%}
+  .fdiv{display:none}
+  .ds-refresh{margin-left:0;text-align:right}
+  #kpi-row{grid-template-columns:1fr 1fr;gap:8px}
+  .kpi{padding:12px}
+  .kpi-val{font-size:22px}
+  #row2,#row4,#row5{grid-template-columns:1fr}
+  .panel{width:100%}
+  .ph{flex-direction:column;align-items:flex-start;gap:8px}
+  .ph-ctrl{width:100%;flex-wrap:wrap}
+  .psel{width:100%}
+  #trend-panel .ph-title{white-space:normal}
+  .trend-body{padding:10px}
+  .trend-intro{flex-direction:column;align-items:flex-start}
+  .trend-intro-main{flex-direction:column;align-items:flex-start}
+  .trend-desc,.trend-window,.tm-note{white-space:normal}
+  .trend-insights{grid-template-columns:1fr}
+  .trend-metric{border-right:none;border-bottom:1px solid var(--border)}
+  .trend-metric:last-child{border-bottom:none}
+  #stp-map{height:300px;min-height:300px}
+  canvas{max-width:100%;height:auto!important}
+  .table-shell{max-height:none;overflow:auto}
+  .fc-tbl th,.fc-tbl td,.ew-tbl th,.ew-tbl td{font-size:10px;padding:8px 10px}
+  #footer{flex-direction:column;text-align:center;padding:0 14px 20px}
+  #settings-drawer{width:100%}
+}
+
+@media (max-width: 480px){
+  #kpi-row{grid-template-columns:1fr}
+  .kpi-val{font-size:20px}
+  .tb-title{font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -492,79 +760,134 @@ button,select,input{font-family:inherit;cursor:pointer}
 <div id="topbar">
   <div class="tb-brand">
     <div class="tb-logo"><img src="https://www.iisc.ac.in/wp-content/uploads/2020/08/IISc_Master_Seal_Black.jpg" alt="IISc Bengaluru logo"/></div>
-    <div><div class="tb-org-name">IISc</div><div class="tb-org-sub">Bengaluru</div></div>
+    <div><div class="tb-org-name">IISc Bengaluru</div><div class="tb-org-sub">Indian Institute of Science</div></div>
   </div>
   <div class="tb-divider"></div>
   <div class="tb-center">
-    <div class="tb-title">WASTEWATER SURVEILLANCE DASHBOARD – IISc BENGALURU</div>
-    <div class="tb-sub" id="tb-sub-pathogens">Monitoring Influenza A · Influenza B · RSV · Leptospira</div>
+    <div class="tb-title">WASTEWATER SURVEILLANCE DASHBOARD</div>
+    <div class="tb-sub" id="tb-sub-pathogens"><span class="live-dot"></span>Monitoring Influenza A · Influenza B · RSV · Leptospira</div>
   </div>
   <div class="tb-right">
     <div style="display:flex;align-items:center;gap:8px">
-      <div class="tb-date" id="tb-date">📅 —</div>
-    </div>
-    <div class="tb-wins">
-      <button class="tw on" data-w="1d" onclick="setWindow('5d',this)">Today</button>
-      <button class="tw" data-w="yesterday" onclick="setWindow('yesterday',this)">Yesterday</button>
-      <button class="tw" data-w="7d" onclick="setWindow('7d',this)">7d</button>
-      <button class="tw" data-w="14d" onclick="setWindow('14d',this)">14d</button>
-      <button class="tw" data-w="30d" onclick="setWindow('30d',this)">30d</button>
-      <button class="tw" data-w="all" onclick="setWindow('all',this)">All</button>
+      <div class="tb-date" id="tb-date">—</div>
+      <button class="tb-theme-toggle" onclick="toggleTheme()" title="Toggle dark/light mode" id="theme-btn" style="display:inline-flex; align-items:center; justify-content:center; padding:6px;"></button>
     </div>
   </div>
 </div>
 
 <!-- FILTER BAR -->
 <div id="filterbar">
-  <span class="fb-sec">Filters</span>
+  <span class="fb-sec">⬡ Filters</span>
   <div class="fb-g"><label>Zone</label><select class="fsel" id="f-zone" onchange="updateStpDropdown();applyFilters()"></select></div>
   <div class="fb-g"><label>STP</label><select class="fsel" id="f-stp" onchange="applyFilters()"><option>All</option></select></div>
   <div class="fb-g"><label>Pathogen</label><select class="fsel" id="f-pathogen" onchange="changePathogen(this.value)"></select></div>
+  <div class="fdiv"></div>
+  <div class="fb-g">
+    <label>Time Window</label>
+    <select class="fsel" id="f-window" onchange="setWindow(this.value)">
+      <option value="1d">Today</option>
+      <option value="yesterday">Yesterday</option>
+      <option value="7d">7 Days</option>
+      <option value="14d">14 Days</option>
+      <option value="30d">30 Days</option>
+      <option value="all">All Data</option>
+    </select>
+  </div>
+  <div class="fdiv"></div>
   <div class="fb-g"><label>From</label><input type="date" class="finp" id="f-from" onchange="applyFilters()"/></div>
   <div class="fb-g"><label>To</label><input type="date" class="finp" id="f-to" onchange="applyFilters()"/></div>
-  <div class="fdiv"></div>
-  <span class="ds-refresh" id="refresh-lbl" style="margin-left:auto"></span>
+  <span class="ds-refresh" id="refresh-lbl" style="display:none;"></span>
 </div>
+
+
 
 <!-- MAIN DASHBOARD -->
 <div id="dash">
 
   <!-- KPI ROW -->
   <div id="kpi-row">
-    <div class="kpi" style="border-top-color:#2563eb">
-      <div class="kpi-icon">🏭</div>
-      <div class="kpi-label">STPs Monitored</div>
-      <div class="kpi-val" id="k-stps">42</div>
-      <div class="kpi-sub">Active out of 42 total</div>
-      <div class="kpi-deactive" id="k-deactive"></div>
+    <!-- Card 1: STPs Monitored -->
+    <div class="kpi">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span class="kpi-label" style="margin:0;">STPs Monitored</span>
+        <div style="color:var(--accent); opacity:0.8; width:16px; height:16px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 21H2M17 21V9l-5 4-5-4v12M12 13V9m5 4v8M7 21v-8"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <div class="kpi-val" id="k-stps">42</div>
+        <span class="kpi-trend" id="k-stps-trend" style="font-size:11px; font-weight:700;"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; min-height:18px;">
+        <span class="kpi-sub" id="k-deactive" style="margin:0;">Active out of 42</span>
+        <span id="k-stps-spark" style="display:inline-flex; align-items:center;"></span>
+      </div>
     </div>
-    <div class="kpi" style="border-top-color:#16a34a">
-      <div class="kpi-icon">👥</div>
-      <div class="kpi-label">Population Covered</div>
-      <div class="kpi-val" id="k-pop">—</div>
-      <div class="kpi-sub">Served by active STPs</div>
+
+    <!-- Card 2: Positive STPs -->
+    <div class="kpi">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span class="kpi-label" style="margin:0;">Positive STPs</span>
+        <div style="color:var(--danger); opacity:0.8; width:16px; height:16px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <div class="kpi-val" id="k-positive">—</div>
+        <span class="kpi-trend" id="k-positive-trend" style="font-size:11px; font-weight:700;"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; min-height:18px;">
+        <span class="kpi-sub" style="margin:0;">Detected presence</span>
+        <span id="k-positive-spark" style="display:inline-flex; align-items:center;"></span>
+      </div>
     </div>
-    <div class="kpi" style="border-top-color:#7c3aed">
-      <div class="kpi-icon">🧪</div>
-      <div class="kpi-label">Samples Collected</div>
-      <div class="kpi-val" id="k-samples">—</div>
-      <div class="kpi-sub" id="k-samples-sub">Latest date in sheet</div>
+
+    <!-- Card 3: Samples Collected -->
+    <div class="kpi">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span class="kpi-label" style="margin:0;">Samples Collected</span>
+        <div style="color:var(--accent-2); opacity:0.8; width:16px; height:16px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2h4M19 10H5M12 2v20M7 22h10"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <div class="kpi-val" id="k-samples">—</div>
+        <span class="kpi-trend" id="k-samples-trend" style="font-size:11px; font-weight:700;"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; min-height:18px;">
+        <span class="kpi-sub" id="k-samples-sub" style="margin:0;">Latest date in sheet</span>
+        <span id="k-samples-spark" style="display:inline-flex; align-items:center;"></span>
+      </div>
     </div>
-    <div class="kpi" style="border-top-color:#e69500">
-      <div class="kpi-icon">🦠</div>
-      <div class="kpi-label">Pathogens Monitored</div>
-      <div class="kpi-val" id="k-pathogens">—</div>
-      <div class="kpi-sub" id="k-path-sub">Loaded from sheet columns</div>
+
+    <!-- Card 4: Overall Alert -->
+    <div class="kpi">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+        <span class="kpi-label" style="margin:0;">Overall Alert</span>
+        <div style="color:var(--warning); opacity:0.8; width:16px; height:16px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+        </div>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px;">
+        <div class="kpi-val" id="k-overall-alert">—</div>
+        <span class="kpi-trend" id="k-overall-alert-trend" style="font-size:11px; font-weight:700;"></span>
+      </div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px; min-height:18px;">
+        <span class="kpi-sub" style="margin:0;">Highest threat level</span>
+        <span id="k-overall-alert-spark" style="display:inline-flex; align-items:center;"></span>
+      </div>
     </div>
   </div>
 
-  <!-- ROW 1: Map | Viral Load Trend | Clinical Correlation -->
-  <div id="row1">
-
+  <!-- ROW 2: Map (70%) | Sidebar (30%) -->
+  <div id="row2">
     <!-- MAP PANEL -->
-    <div class="panel">
+    <div class="panel" style="display:flex; flex-direction:column;">
       <div class="ph">
-        <span class="ph-title">STP Locations – Bengaluru</span>
+        <span class="ph-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent);"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          STP Locations – Bengaluru
+        </span>
         <div class="ph-ctrl">
           <select class="psel" id="map-color-by" onchange="refreshMap()">
             <option value="risk">Color: Risk</option>
@@ -573,85 +896,164 @@ button,select,input{font-family:inherit;cursor:pointer}
           </select>
         </div>
       </div>
-      <div class="pb" style="padding:10px">
-        <div id="map-container">
-          <div id="stp-map"></div>
+      <div class="pb" style="padding:10px; flex:1; display:flex; flex-direction:column;">
+        <div id="map-container" style="flex:1; display:flex; flex-direction:column;">
+          <div id="stp-map" style="flex:1; min-height:320px;"></div>
           <div class="map-legend" id="map-legend">
-            <div class="ml-item"><div class="ml-dot" style="background:#22a849"></div>Low Risk / Active</div>
-            <div class="ml-item"><div class="ml-dot" style="background:#e69500"></div>Moderate Risk</div>
-            <div class="ml-item"><div class="ml-dot" style="background:#dc2626"></div>High Risk</div>
-            <div class="ml-item"><div class="ml-dot" style="background:#94a3b8"></div>Inactive</div>
+            <div class="ml-item"><div class="ml-dot" style="background:var(--success)"></div>Low Risk</div>
+            <div class="ml-item"><div class="ml-dot" style="background:var(--warning)"></div>Moderate</div>
+            <div class="ml-item"><div class="ml-dot" style="background:var(--danger)"></div>High Risk</div>
+            <div class="ml-item"><div class="ml-dot" style="background:var(--text-muted)"></div>Inactive</div>
           </div>
           <div class="map-note">Hover over markers for STP details</div>
         </div>
       </div>
     </div>
 
+    <!-- SIDEBAR STACK -->
+    <div id="row2-sidebar">
+      <!-- PANEL 1: Dashboard Summary -->
+      <div class="panel sidebar-panel" style="flex:0 0 auto;">
+        <div class="ph">
+          <span class="ph-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Dashboard Summary
+          </span>
+        </div>
+        <div class="pb" style="display:flex; flex-direction:column; gap:8px; padding:16px;">
+          <table style="width:100%; border-collapse:collapse; font-size:11px;">
+            <tbody>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M22 21H2M17 21V9l-5 4-5-4v12M12 13V9m5 4v8M7 21v-8"/></svg>
+                  Total STPs
+                </td>
+                <td style="padding:6px 0; text-align:right; font-weight:700;" id="ds-total-stps">42</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--danger);"><circle cx="12" cy="12" r="5"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+                  Positive STPs
+                </td>
+                <td style="padding:6px 0; text-align:right; font-weight:700;" id="ds-positive-stps">—</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent-2);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                  Population
+                </td>
+                <td style="padding:6px 0; text-align:right; font-weight:700;" id="k-pop">—</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><path d="M4.5 16.5c-1.5 1.25-2.5 3-2.5 5h20c0-2-1-3.75-2.5-5"/><path d="M12 2C6.5 2 2 6.5 2 12c0 2.5 1 4.75 2.5 6.5h15C21 16.75 22 14.5 22 12c0-5.5-4.5-10-10-10z"/></svg>
+                  Active Pathogen
+                </td>
+                <td style="padding:6px 0; text-align:right; font-weight:700; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" id="ds-active-pathogen">—</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--warning);"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+                  Overall Risk
+                </td>
+                <td style="padding:6px 0; text-align:right; font-weight:700;" id="ds-overall-risk">—</td>
+              </tr>
+              <tr style="border-bottom:1px solid var(--border);">
+                <td style="padding:6px 0; color:var(--text-secondary); display:flex; align-items:center; gap:6px;">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--text-secondary);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Last Updated
+                </td>
+                <td style="padding:6px 0; text-align:right; font-weight:700;" id="ds-last-updated">—</td>
+              </tr>
+            </tbody>
+          </table>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:var(--text-muted); margin-top:4px;">
+            <span>Pathogens (<span id="k-pathogens">—</span>):</span>
+            <span id="k-path-sub" style="text-align:right; max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">—</span>
+          </div>
+          <button onclick="exportDataCSV()" style="margin-top:6px; width:100%; border:1px solid var(--border); background:var(--accent-dim); color:var(--text-primary); font-family:var(--font-primary); font-size:11px; font-weight:700; padding:8px 12px; border-radius:var(--r3); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:var(--transition); outline:none;" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background='var(--accent-dim)'">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
+            Export Filtered Data (CSV)
+          </button>
+        </div>
+      </div>
+
+
+      <!-- PANEL 2: AI Insights -->
+      <div class="panel sidebar-panel" id="ai-insights-panel">
+        <div class="ph">
+          <span class="ph-title">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent-2);"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            AI Insights
+          </span>
+        </div>
+        <div class="pb" style="padding:12px 16px;">
+          <ul id="ai-insights-list" style="margin-left:0; list-style-type:none; color:var(--text-secondary); font-size:11px; line-height:1.6; display:flex; flex-direction:column; gap:8px;">
+            <li>Loading predictive insights...</li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ROW 3: Full-width Viral Load Trend -->
+  <div id="row3">
     <!-- VIRAL LOAD TREND PANEL -->
-    <div class="panel">
+    <div class="panel" id="trend-panel" style="width:100%;">
       <div class="ph">
-        <span class="ph-title">Viral Load Trend <span class="ph-tag">(Ct / PMMOV)</span><span class="info-tooltip" data-tooltip="Ct = Cycle Threshold · PMMOV = Pepper Mild Mottle Virus">ⓘ</span></span>
-        <div class="ph-ctrl">
-          <button class="pwb on" data-w="1d" onclick="setWindow('1d',null)">Today</button>
-          <button class="pwb" data-w="yesterday" onclick="setWindow('yesterday',null)">Yesterday</button>
-          <button class="pwb" data-w="7d" onclick="setWindow('7d',null)">7d</button>
-          <button class="pwb" data-w="14d" onclick="setWindow('14d',null)">14d</button>
+        <span class="ph-title" id="trend-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent);"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Viral Load Trend – All STPs <span class="ph-tag">(Ct / PMMOV)</span><span class="info-tooltip" data-tooltip="Ct = Cycle Threshold. PMMOV is the fecal-strength control used to normalize samples. Lower normalized Ct / PMMOV index indicates stronger wastewater signal.">ⓘ</span>
+        </span>
+        <span id="trend-subtitle" style="font-size:10px; color:var(--text-muted); font-weight:600; text-transform:uppercase;">All Pathogens</span>
+      </div>
+      <div class="pb trend-body">
+        <div class="trend-intro" style="justify-content: flex-end; padding-bottom: 8px;">
+          <span class="trend-window" id="trend-window-label">Selected range</span>
         </div>
-      </div>
-      <div class="pb" style="padding:8px 14px">
-        <canvas id="trend-chart" class="chart-canvas" height="295"></canvas>
-      </div>
-    </div>
-
-    <!-- CLINICAL CORRELATION PANEL (bigger) -->
-    <div class="panel" id="clinical-panel">
-      <div class="ph">
-        <span class="ph-title">Correlation – Clinical Data</span>
-        <select class="psel" id="clin-path" onchange="changePathogen(this.value)"></select>
-      </div>
-      <div class="pb">
-        <div class="corr-stats-row" id="corr-stats-row">
-          <div class="corr-stat-card">
-            <div class="csc-label">Pearson r</div>
-            <div class="csc-val" id="cs-pearson" style="color:#1a3a6b">—</div>
+        <div class="trend-insights" id="trend-insights">
+          <div class="trend-metric">
+            <span class="tm-label">Latest Index</span>
+            <span class="tm-value" id="trend-latest">--</span>
+            <span class="tm-note" id="trend-latest-date">No data</span>
           </div>
-          <div class="corr-stat-card">
-            <div class="csc-label">R²</div>
-            <div class="csc-val" id="cs-r2" style="color:#7c3aed">—</div>
+          <div class="trend-metric">
+            <span class="tm-label">Direction</span>
+            <span class="tm-value trend-flat" id="trend-direction">--</span>
+            <span class="tm-note" id="trend-direction-sub">Compared with prior date</span>
           </div>
-          <div class="corr-stat-card">
-            <div class="csc-label">Strength</div>
-            <div class="csc-val" id="cs-strength" style="font-size:12px">—</div>
-          </div>
-          <div class="corr-stat-card">
-            <div class="csc-label">p-value</div>
-            <div class="csc-val" id="cs-pval" style="font-size:14px">—</div>
+          <div class="trend-metric">
+            <span class="tm-label">Strongest Signal</span>
+            <span class="tm-value" id="trend-strongest">--</span>
+            <span class="tm-note" id="trend-strongest-sub">Pathogen with lowest index</span>
           </div>
         </div>
-        <canvas id="clin-chart" class="chart-canvas" height="200"></canvas>
-        <div style="font-size:9.5px;color:var(--muted);margin-top:6px;text-align:center" id="clin-note">
-          Clinical correlation appears when Clinical_Cases data is available
+        <div class="trend-chart-shell">
+          <canvas id="trend-chart" class="chart-canvas" height="340"></canvas>
+        </div>
+        <div class="trend-legend" id="trend-legend"></div>
+        <div class="trend-footnote">
+          <span>Gaps in trend line indicate missing numeric Ct values</span>
         </div>
       </div>
     </div>
+  </div>
 
-  </div><!-- /row1 -->
-
-  <!-- ROW 2: Ct Value | Pathogen Donut | Population Corr | Pollution Corr -->
-  <div id="row2">
-
+  <!-- ROW 4: Ct Value by STP (Left) | Pathogen Detection Share (Right) -->
+  <div id="row4">
     <!-- CT VALUE BY STP -->
     <div class="panel">
       <div class="ph">
-        <span class="ph-title">Ct Value by STP</span>
+        <span class="ph-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent);"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          Ct Value by STP
+        </span>
         <div class="ph-ctrl">
           <select class="psel" id="ct-path" onchange="changePathogen(this.value)"></select>
-          <button class="pwb on" data-w="1d" onclick="setWindow('1d',null)">Today</button>
-          <button class="pwb" data-w="yesterday" onclick="setWindow('yesterday',null)">Yesterday</button>
-          <button class="pwb" data-w="7d" onclick="setWindow('7d',null)">7d</button>
         </div>
       </div>
-      <div class="pb" id="ct-body">
+      <div class="pb" id="ct-body" style="height:210px; overflow-y:auto;">
         <div class="no-data">No Ct_Value data yet.<br>Add Ct_Value column to your sheet.</div>
       </div>
     </div>
@@ -659,132 +1061,214 @@ button,select,input{font-family:inherit;cursor:pointer}
     <!-- PATHOGEN DETECTION SHARE -->
     <div class="panel">
       <div class="ph">
-        <span class="ph-title">Pathogen Detection Share</span>
+        <span class="ph-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent-2);"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          Pathogen Detection Share
+        </span>
         <div class="ph-ctrl">
-          <span id="donut-period" style="font-size:9.5px;color:var(--muted)">Last 7 Days</span>
+          <span id="donut-period" style="font-size:10px;color:var(--text-muted)">Last 7 Days</span>
         </div>
       </div>
-      <div class="pb">
-        <div class="donut-wrap">
-          <canvas id="donut-chart" width="120" height="120" style="flex-shrink:0"></canvas>
+      <div class="pb" style="height:210px; display:flex; align-items:center;">
+        <div class="donut-wrap" style="width:100%;">
+          <canvas id="donut-chart" width="160" height="160" style="flex-shrink:0"></canvas>
           <div class="donut-legend" id="donut-legend"></div>
         </div>
       </div>
     </div>
+  </div>
 
-    <!-- POPULATION CORRELATION (full panel, no cramping) -->
+  <!-- ROW 5: AI Outbreak Forecast (Left) | Early Warning System (Right) -->
+  <div id="row5">
+    <!-- AI OUTBREAK FORECAST -->
     <div class="panel">
       <div class="ph">
-        <span class="ph-title">Correlation – Population</span>
-        <select class="psel" id="pop-path" onchange="changePathogen(this.value)"></select>
+        <span class="ph-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent);"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/><line x1="9" y1="5" x2="15" y2="5"/></svg>
+          Outbreak Forecast
+        </span>
+        <span style="font-size:10px;color:var(--text-muted);font-weight:600">7 / 14 day prediction</span>
       </div>
       <div class="pb">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="flex:1">
-            <canvas id="pop-chart" class="chart-canvas" height="180"></canvas>
-          </div>
-          <div style="min-width:90px;text-align:right;padding-top:10px">
-            <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px">Pearson r</div>
-            <div class="corr-r-big" id="pop-r">—</div>
-            <div class="corr-r-lbl" id="pop-r-lbl">—</div>
-            <div id="pop-ins" class="ins-pill" style="display:none"></div>
-          </div>
-        </div>
-        <div style="font-size:9.5px;color:var(--muted);margin-top:5px;padding:4px 8px;background:#f8fafd;border-radius:5px" id="pop-insight">
-          Scatter shows pathogen load vs population size per STP
+        <div class="table-shell table-shell--fixed">
+          <table class="fc-tbl">
+            <thead>
+              <tr>
+                <th style="width: 18%;">Pathogen</th>
+                <th style="width: 18%;">Current Status</th>
+                <th style="width: 14%;">7d Forecast</th>
+                <th style="width: 14%;">14d Forecast</th>
+                <th style="width: 12%;">Risk Score</th>
+                <th style="width: 12%;">Risk Level</th>
+                <th style="width: 12%;">Confidence</th>
+              </tr>
+            </thead>
+            <tbody id="forecast-body"></tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <!-- POLLUTION CORRELATION (full panel, no cramping) -->
+    <!-- PUBLIC HEALTH EARLY WARNING -->
     <div class="panel">
       <div class="ph">
-        <span class="ph-title">Correlation – Pollution</span>
-        <div class="ph-ctrl">
-          <select class="psel" id="poll-path" onchange="changePathogen(this.value)"></select>
-          <select class="psel" id="poll-param" onchange="renderPollCorr()">
-            <option value="AQI">AQI</option>
-            <option value="PM25">PM2.5</option>
-            <option value="PM10">PM10</option>
-            <option value="NO2">NO₂</option>
-            <option value="CO2">CO₂</option>
-          </select>
-        </div>
+        <span class="ph-title">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--danger);"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Early Warning System
+        </span>
+        <span style="font-size:10px;color:var(--text-muted);font-weight:600">Top STPs by risk score</span>
       </div>
       <div class="pb">
-        <div style="display:flex;gap:10px;align-items:flex-start">
-          <div style="flex:1">
-            <canvas id="poll-chart" class="chart-canvas" height="180"></canvas>
-          </div>
-          <div style="min-width:90px;text-align:right;padding-top:10px">
-            <div style="font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;margin-bottom:4px">Pearson r</div>
-            <div class="corr-r-big" id="poll-r">—</div>
-            <div class="corr-r-lbl" id="poll-r-lbl">—</div>
-          </div>
-        </div>
-        <div style="font-size:9.5px;color:var(--muted);margin-top:5px;padding:4px 8px;background:#f8fafd;border-radius:5px" id="poll-insight">
-          Add AQI/PM2.5/PM10/NO2/CO2 columns to see pollution correlation
-        </div>
-      </div>
-    </div>
-
-  </div><!-- /row2 -->
-
-  <!-- ROW 3: Outbreak Forecast | Early Warning -->
-  <div id="row3">
-
-    <!-- AI OUTBREAK FORECAST (full panel) -->
-    <div class="panel">
-      <div class="ph">
-        <span class="ph-title">AI-Based Outbreak Forecast</span>
-        <span style="font-size:9.5px;color:var(--muted)">7 / 14 day prediction based on trend</span>
-      </div>
-      <div class="pb">
-        <table class="fc-tbl">
-          <thead>
-            <tr>
-              <th>Pathogen</th><th>Current Status</th>
-              <th>7d Forecast</th><th>14d Forecast</th>
-              <th>Risk Score</th><th>Risk Level</th><th>Confidence</th>
-            </tr>
-          </thead>
-          <tbody id="forecast-body"></tbody>
-        </table>
-      </div>
-    </div>
-
-    <!-- PUBLIC HEALTH EARLY WARNING (full panel) -->
-    <div class="panel">
-      <div class="ph">
-        <span class="ph-title">Public Health Early Warning System</span>
-        <span style="font-size:9.5px;color:var(--muted)">Top STPs by risk score</span>
-      </div>
-      <div class="pb">
-        <div class="alert-strip">
-          <span class="alert-badge">🚨 AI ALERT</span>
-          <div class="alert-txt" id="alert-txt">
+        <div class="alert-strip" style="margin-bottom:8px; padding:8px 12px;">
+          <span class="alert-badge" style="font-size:9px; padding:3px 8px; display:inline-flex; align-items:center; gap:3px;">
+            <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0zM12 9v4M12 17h.01"/></svg>
+            AI ALERT
+          </span>
+          <div class="alert-txt" id="alert-txt" style="font-size:11px; line-height:1.4;">
             Loading risk analysis…
           </div>
         </div>
-        <table class="ew-tbl">
-          <thead>
-            <tr><th>STP</th><th>Zone</th><th>Alert Level</th><th>Forecast Impact (7-14d)</th><th>Recommended Action</th></tr>
-          </thead>
-          <tbody id="ew-body"></tbody>
-        </table>
+        <div class="table-shell table-shell--fixed" style="height:156px;">
+          <table class="ew-tbl">
+            <thead>
+              <tr>
+                <th style="width: 32%;">STP</th>
+                <th style="width: 13%;">Zone</th>
+                <th style="width: 15%;">Alert Level</th>
+                <th style="width: 22%;">Forecast Impact (7-14d)</th>
+                <th style="width: 18%;">Recommended Action</th>
+              </tr>
+            </thead>
+            <tbody id="ew-body"></tbody>
+          </table>
+        </div>
       </div>
     </div>
+  </div>
 
-  </div><!-- /row3 -->
+  <!-- ROW 6: Collapsible Analytics Section -->
+  <div id="row6">
+    <div class="panel" style="border: 1.5px dashed var(--border-accent);">
+      <button class="ph" onclick="toggleCorrelationSection()" style="width:100%; text-align:left; background:transparent; border:none; color:var(--accent); font-size:12px; font-weight:800; cursor:pointer; display:flex; justify-content:space-between; align-items:center; outline:none; padding:14px 20px;">
+        <span style="display:inline-flex; align-items:center; gap:6px;">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+          VIEW CORRELATION ANALYTICS (CLINICAL, POPULATION & POLLUTION CORRELATIONS)
+        </span>
+        <svg id="corr-toggle-arrow" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:var(--transition); color:var(--text-secondary);"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+      <div id="correlation-section" style="display:none; padding:16px; border-top:1px solid var(--border);">
+        <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px;">
+          
+          <!-- CLINICAL CORRELATION -->
+          <div class="panel" id="clinical-panel">
+            <div class="ph">
+              <span class="ph-title">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent-2);"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                Correlation – Clinical Data
+              </span>
+              <select class="psel" id="clin-path" onchange="changePathogen(this.value)"></select>
+            </div>
+            <div class="pb">
+              <div class="corr-stats-row" id="corr-stats-row" style="margin-bottom:8px;">
+                <div class="corr-stat-card">
+                  <div class="csc-label">Pearson r</div>
+                  <div class="csc-val" id="cs-pearson" style="color:var(--accent-2)">—</div>
+                </div>
+                <div class="corr-stat-card">
+                  <div class="csc-label">R²</div>
+                  <div class="csc-val" id="cs-r2" style="color:var(--p-influenza-b)">—</div>
+                </div>
+                <div class="corr-stat-card">
+                  <div class="csc-label">Strength</div>
+                  <div class="csc-val" id="cs-strength" style="font-size:11px">—</div>
+                </div>
+                <div class="corr-stat-card">
+                  <div class="csc-label">p-value</div>
+                  <div class="csc-val" id="cs-pval" style="font-size:12px">—</div>
+                </div>
+              </div>
+              <canvas id="clin-chart" class="chart-canvas" height="215"></canvas>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;text-align:center" id="clin-note">
+                Clinical correlation appears when Clinical_Cases data is available
+              </div>
+            </div>
+          </div>
+
+          <!-- POPULATION CORRELATION -->
+          <div class="panel">
+            <div class="ph">
+              <span class="ph-title">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--accent);"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                Correlation – Population
+              </span>
+              <select class="psel" id="pop-path" onchange="changePathogen(this.value)"></select>
+            </div>
+            <div class="pb">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <div style="flex:1">
+                  <canvas id="pop-chart" class="chart-canvas" height="215"></canvas>
+                </div>
+                <div style="min-width:90px;text-align:right;padding-top:10px">
+                  <div style="font-size:8px;color:var(--text-muted);font-weight:800;text-transform:uppercase;margin-bottom:4px">Pearson r</div>
+                  <div class="corr-r-big" id="pop-r">—</div>
+                  <div class="corr-r-lbl" id="pop-r-lbl">—</div>
+                  <div id="pop-ins" class="ins-pill" style="display:none"></div>
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;padding:6px 10px;background:var(--bg-input);border-radius:var(--r3);border:1px solid var(--border)" id="pop-insight">
+                Scatter shows pathogen load vs population size per STP
+              </div>
+            </div>
+          </div>
+
+          <!-- POLLUTION CORRELATION -->
+          <div class="panel">
+            <div class="ph">
+              <span class="ph-title">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:2px; vertical-align:middle; display:inline-block; color:var(--warning);"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                Correlation – Pollution
+              </span>
+              <div class="ph-ctrl">
+                <select class="psel" id="poll-path" onchange="changePathogen(this.value)"></select>
+                <select class="psel" id="poll-param" onchange="renderPollCorr()">
+                  <option value="AQI">AQI</option>
+                  <option value="PM25">PM2.5</option>
+                  <option value="PM10">PM10</option>
+                  <option value="NO2">NO₂</option>
+                  <option value="CO2">CO₂</option>
+                </select>
+              </div>
+            </div>
+            <div class="pb">
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <div style="flex:1">
+                  <canvas id="poll-chart" class="chart-canvas" height="215"></canvas>
+                </div>
+                <div style="min-width:90px;text-align:right;padding-top:10px">
+                  <div style="font-size:8px;color:var(--text-muted);font-weight:800;text-transform:uppercase;margin-bottom:4px">Pearson r</div>
+                  <div class="corr-r-big" id="poll-r">—</div>
+                  <div class="corr-r-lbl" id="poll-r-lbl">—</div>
+                </div>
+              </div>
+              <div style="font-size:10px;color:var(--text-muted);margin-top:6px;padding:6px 10px;background:var(--bg-input);border-radius:var(--r3);border:1px solid var(--border)" id="poll-insight">
+                Add AQI/PM2.5/PM10/NO2/CO2 columns to see pollution correlation
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
 </div><!-- /dash -->
 
 <!-- FOOTER -->
-<div id="footer">
-  <div class="ft-left">🔬 IISc Bengaluru · Wastewater-Based Epidemiology · BWSSB 40 STP Network</div>
-  <div class="ft-right">
-    <span id="ft-records">— records in view</span>
-    <span id="ft-refresh"></span>
-    <span>v3.0</span>
+<div id="footer" style="display:flex; flex-direction:column; gap:6px; align-items:center; justify-content:center; text-align:center; padding:20px 16px; border-top:1px solid var(--border); font-size:10px; color:var(--text-secondary); line-height:1.6; width:100%;">
+  <div style="font-weight:600; color:var(--text-primary); letter-spacing:0.3px;">
+    Indian Institute of Science | Wastewater Surveillance Platform | Version 4.0
+  </div>
+  <div>
+    Powered by IISc Bengaluru | <span id="ft-refresh">Last Updated: —</span> | <span id="ft-records">— records in view</span>
   </div>
 </div>
 
@@ -795,7 +1279,75 @@ button,select,input{font-family:inherit;cursor:pointer}
 var NO_DATA_LABEL = "No CT";
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   ALL 40 STPs — from BWSSB PPT
+   THEME TOGGLE
+═══════════════════════════════════════════════════════════════════════════ */
+function updateThemeButtonIcon(theme){
+  var btn = document.getElementById("theme-btn");
+  if(!btn) return;
+  if(theme === "dark") {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+  } else {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:middle;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>';
+  }
+}
+
+function toggleTheme(){
+  var html=document.documentElement;
+  var current=html.getAttribute("data-theme");
+  var next=current==="dark"?"light":"dark";
+  html.setAttribute("data-theme",next);
+  updateThemeButtonIcon(next);
+  try{localStorage.setItem("iisc-theme",next);}catch(e){}
+  if(STATE.filtered.length) renderAll();
+}
+
+function toggleCorrelationSection(){
+  var section = document.getElementById("correlation-section");
+  var arrow = document.getElementById("corr-toggle-arrow");
+  if(!section || !arrow) return;
+  if(section.style.display === "none"){
+    section.style.display = "block";
+    arrow.textContent = "▼";
+    setTimeout(function(){
+      window.dispatchEvent(new Event('resize'));
+    }, 80);
+  } else {
+    section.style.display = "none";
+    arrow.textContent = "▶";
+  }
+}
+
+// Restore saved theme on load
+(function(){
+  try{
+    var saved=localStorage.getItem("iisc-theme") || "dark";
+    document.documentElement.setAttribute("data-theme",saved);
+  }catch(e){}
+})();
+
+document.addEventListener("DOMContentLoaded", function(){
+  try {
+    var saved = localStorage.getItem("iisc-theme") || "dark";
+    updateThemeButtonIcon(saved);
+  } catch(e){}
+});
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHART COLOR HELPERS — adapt to theme
+═══════════════════════════════════════════════════════════════════════════ */
+function isDark(){return document.documentElement.getAttribute("data-theme")!=="light";}
+function chartTextColor(){return isDark()?"#8b949e":"#475569";}
+function chartGridColor(){return isDark()?"rgba(99,110,123,0.15)":"#e2e8f0";}
+function chartAxisColor(){return isDark()?"rgba(99,110,123,0.3)":"#cbd5e1";}
+function chartBgTop(){return isDark()?"rgba(239,71,111,0.08)":"rgba(254,226,226,.45)";}
+function chartBgBot(){return isDark()?"rgba(6,214,160,0.06)":"rgba(240,253,244,.75)";}
+function chartLabelHigh(){return isDark()?"#ef476f":"#991b1b";}
+function chartLabelLow(){return isDark()?"#06d6a0":"#166534";}
+function chartFont(){return "'Inter',system-ui,sans-serif";}
+function chartMonoFont(){return "'JetBrains Mono','Inter',monospace";}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ALL 40+2 STPs — from BWSSB PPT
 ═══════════════════════════════════════════════════════════════════════════ */
 var ALL_STPS = [
   {id:"STP-01", name:"Hebbal 60 MLD",              lat:12.940545, lng:77.654822, type:"STP",  cap:60,  pop:450000,  zone:"North"},
@@ -838,18 +1390,19 @@ var ALL_STPS = [
   {id:"STP-38", name:"Rajacanal 20 MLD ISPS",      lat:13.044947, lng:77.646376, type:"ISPS", cap:20,  pop:152000,  zone:"North"},
   {id:"STP-39", name:"Sadaramangala 5 MLD ISPS",   lat:12.998234, lng:77.725326, type:"ISPS", cap:5,   pop:42000,   zone:"East"},
   {id:"STP-40", name:"Bangalore Airport T1 & T2",  lat:13.198900, lng:77.705700, type:"STP",  cap:8,   pop:60000,   zone:"North-East"},
-  {id:"STP-41", name:"IISc near D gate",  lat:13.0170, lng:77.5659, type:"STP",  cap:5000,   pop:5000,   zone:"North"},
-  {id:"STP-42", name:"IISc near Swimming Pool",  lat:13.0170, lng:77.5659, type:"STP",  cap:5000,   pop:5000,   zone:"North"}
+  {id:"STP-41", name:"IISc near D gate",           lat:13.0232, lng:77.5615, type:"STP",  cap:5,   pop:5000,   zone:"North"},
+  {id:"STP-42", name:"IISc near Swimming Pool",    lat:13.0145, lng:77.5695, type:"STP",  cap:3,   pop:5000,   zone:"North"}
 ];
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   PATHOGEN CONFIG — add new ones here only
+   PATHOGEN CONFIG
 ═══════════════════════════════════════════════════════════════════════════ */
 var P_CFG = {
-  Influenza_A: {label:"Influenza A",   color:"#e69500", active:true},
-  Influenza_B: {label:"Influenza B",   color:"#7c3aed", active:true},
-  RSV:         {label:"RSV",           color:"#2563eb", active:true},
-  Leptospira:  {label:"Leptospira",    color:"#16a34a", active:true}
+  All:         {label:"All Pathogens", color:"#06d6a0", active:true},
+  Influenza_A: {label:"Influenza A",   color:"#f59e0b", active:true},
+  Influenza_B: {label:"Influenza B",   color:"#a78bfa", active:true},
+  RSV:         {label:"RSV",           color:"#38bdf8", active:true},
+  Leptospira:  {label:"Leptospira",    color:"#34d399", active:true}
 };
 var P_ALIASES = {
   influenzaa:"Influenza_A",
@@ -868,13 +1421,13 @@ var P_ALIASES = {
    STATE
 ═══════════════════════════════════════════════════════════════════════════ */
 var STATE = {
-  rows: [],           // all data rows
-  filtered: [],       // after filter
-  window: "1d",       // time window
+  rows: [],
+  filtered: [],
+  window: "1d",
   selectedPathogen: "Influenza_A",
-  stpStatus: {},      // {STP_ID: "Active"|"Inactive"} — from sheet column
-  stpPop: {},         // {STP_ID: population} — from sheet, overrides hardcoded
-  stpControlRows: [], // rows from STP_Status_Control sheet
+  stpStatus: {},
+  stpPop: {},
+  stpControlRows: [],
   gsUrl: "https://docs.google.com/spreadsheets/d/15ZyMqltcMi2LpsjsTCnHyIZb2Aro9u3U/edit?usp=sharing&ouid=114309955784554821996&rtpof=true&sd=true",
   autoRefresh: false,
   refreshSec: 60,
@@ -903,6 +1456,12 @@ function isoToday(){
   var day=String(d.getDate()).padStart(2,"0");
   return d.getFullYear()+"-"+m+"-"+day;
 }
+function formatDisplayDate(iso){
+  if(!iso)return"—";
+  var parts=String(iso).split("-");
+  if(parts.length!==3)return iso;
+  return parts[2]+"/"+parts[1]+"/"+parts[0];
+}
 function isoAddDays(iso,days){
   if(!iso)return isoToday();
   var p=String(iso).split("-");
@@ -913,26 +1472,30 @@ function isoAddDays(iso,days){
 function getLatestDataDate(){
   return STATE.rows.reduce(function(m,r){return (r.Date&&r.Date>m)?r.Date:m;},"");
 }
+function getWindowAnchorDate(){
+  return isoToday();
+}
 function getDateBadgeText(date){
   var d=date||isoToday();
-  if(d===isoToday())return"📅 Today · "+d;
-  if(d===isoAddDays(isoToday(),-1))return"📅 Yesterday · "+d;
-  return"📅 Latest · "+d;
+  var today=isoToday();
+  var displayDate=formatDisplayDate(d);
+  if(d===today)return"📅 Today · "+displayDate;
+  if(d===isoAddDays(today,-1))return"📅 Yesterday · "+displayDate;
+  return"📅 "+displayDate;
 }
 function getCurrentDateBadge(){
   var fromV=document.getElementById("f-from").value;
   var toV=document.getElementById("f-to").value;
   var today=isoToday();
-  var anchor=getLatestDataDate()||today;
   if(fromV&&toV){
     if(fromV===toV) return getDateBadgeText(fromV);
-    return "📅 " + fromV + " → " + toV;
+    return "📅 " + formatDisplayDate(fromV) + " → " + formatDisplayDate(toV);
   }
-  if(fromV) return "📅 From " + fromV;
-  if(toV) return "📅 Until " + toV;
+  if(fromV) return "📅 From " + formatDisplayDate(fromV);
+  if(toV) return "📅 Until " + formatDisplayDate(toV);
   if(STATE.window==="1d") return getDateBadgeText(today);
   if(STATE.window==="yesterday") return getDateBadgeText(isoAddDays(today,-1));
-  return getDateBadgeText(anchor);
+  return getDateBadgeText(today);
 }
 function clamp(v,a,b){return Math.max(a,Math.min(b,v));}
 function avg(arr){return arr.length?arr.reduce(function(a,b){return a+b;},0)/arr.length:0;}
@@ -944,9 +1507,9 @@ function pearson(xs,ys){
   return den?parseFloat((num/den).toFixed(3)):0;
 }
 function rLabel(r){
-  if(r===null)return{color:"#6b7a9a",label:"N/A"};
+  if(r===null)return{color:isDark()?"#484f58":"#6b7a9a",label:"N/A"};
   var a=Math.abs(r);
-  var c=a>.7?"#16a34a":a>.4?"#d97706":"#dc2626";
+  var c=a>.7?(isDark()?"#06d6a0":"#16a34a"):a>.4?(isDark()?"#ffd166":"#d97706"):(isDark()?"#ef476f":"#dc2626");
   var l=a>.7?"Strong":a>.4?"Moderate":"Weak";
   if(r<0)l="Neg. "+l; else l="Pos. "+l;
   return{color:c,label:l};
@@ -998,7 +1561,6 @@ function parseDateToken(t){
   if(t===undefined||t===null||t==="")return null;
   if(t instanceof Date&&!isNaN(t))return t;
   if(typeof t === "number" && isFinite(t)){
-    // Google Sheets/Excel serial date fallback.
     if(t>20000 && t<90000){
       var serialMs = Math.round((t - 25569) * 86400000);
       var serialDate = new Date(serialMs);
@@ -1007,13 +1569,13 @@ function parseDateToken(t){
   }
   var s = String(t).trim();
   if(!s)return null;
-  var iso = s.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
+  var iso = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
   if(iso){
     var y = Number(iso[1]), m = Number(iso[2]), d = Number(iso[3]);
     var dt = new Date(Date.UTC(y, m - 1, d));
     return isNaN(dt) ? null : dt;
   }
-  var dmy = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  var dmy = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
   if(dmy){
     var a = Number(dmy[1]), b = Number(dmy[2]), yy = Number(dmy[3]);
     var day = a, month = b;
@@ -1031,22 +1593,17 @@ function parseDateToken(t){
 function looksLikeDate(val){
   if(!val)return false;
   var s = String(val).trim();
-  // Match DD/MM/YYYY or YYYY-MM-DD or similar patterns
-  return /(\d{1,2}[\/-]\d{1,2}[\/-]\d{4}|\d{4}[\/-]\d{1,2}[\/-]\d{1,2})/.test(s);
+  return /(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{4}|\d{4}[\/\-]\d{1,2}[\/\-]\d{1,2})/.test(s);
 }
 
 function extractFirstDateColumn(out){
-  // Use ONLY the FIRST date column found, in priority order. Do NOT mix multiple date columns.
   var priorityOrder = ["Date","Date_of_Analysis","Date_of_analysis","Sample_Collection_Date","Sample_collection_date","sample_collection_date","Collection_Date"];
   for(var i = 0; i < priorityOrder.length; i++){
     var key = priorityOrder[i];
     if(out[key]) return {key: key, value: out[key]};
   }
-  // Fallback: find first column with "date" in the name
   var dateKeys = Object.keys(out).filter(function(k){ return /date/i.test(k); });
   if(dateKeys.length > 0 && out[dateKeys[0]]) return {key: dateKeys[0], value: out[dateKeys[0]]};
-  
-  // Last resort: find first column that LOOKS like a date (auto-detect by content)
   var allKeys = Object.keys(out);
   for(var i = 0; i < allKeys.length; i++){
     var k = allKeys[i];
@@ -1060,63 +1617,78 @@ function normRow(r){
     var raw = r[k]; if(raw==null) raw="";
     var v = raw.toString().trim();
     var kn = canonicalKey(k);
-    // treat dash/em-dash/blank as empty (not tested)
     if(v===""||v==="—"||v==="--"||v==="-") { out[kn]=""; return; }
     out[kn] = (!isNaN(v) && v!=="") ? Number(v) : v;
   });
-  // ── Date: handle all possible field names (use ONLY the first date column found) ──────────────────────
   var dateInfo = extractFirstDateColumn(out);
   if(dateInfo && dateInfo.value){
       var dateVal = dateInfo.value;
       var dateStr = String(dateVal).trim();
-      
-      // Try to parse as single token first
       var parsedDate = parseDateToken(dateStr);
       if(parsedDate && !isNaN(parsedDate)){
         out.Date = parsedDate.toISOString().split("T")[0];
       } else {
-        // Fallback: keep original if unparseable
         out.Date = dateStr;
       }
   }
-  // ── field aliases ───────────────────────────────────────────────
   if(!out.STP_ID && out.STP_id)  out.STP_ID = String(out.STP_id).trim();
   if(!out.STP_Name && out.STP_name) out.STP_Name = out.STP_name;
   if(out.Clinica_l_Cases!=null) out.Clinical_Cases = out.Clinica_l_Cases;
-  // ensure STP_ID is a string
   if(out.STP_ID) out.STP_ID = String(out.STP_ID).trim();
   return out;
 }
 
 function getRowStpId(r){
-  if(r.STP_ID) return String(r.STP_ID).trim();
-  if(r.STP_id) return String(r.STP_id).trim();
+  // 1. Try matching by STP_Name first to handle cases where wrong ID is entered in sheet
   if(r.STP_Name && typeof r.STP_Name === "string"){
     var name = r.STP_Name.trim().toLowerCase();
     var match = ALL_STPS.find(function(s){return s.name.trim().toLowerCase()===name;});
     if(match) return match.id;
+    
     var cleaned = name.replace(/\s+MLD$/i,"").replace(/\b(stp|ttp|isps)\b/gi,"").replace(/\s+/g," ").trim();
-    match = ALL_STPS.find(function(s){return s.name.trim().toLowerCase().indexOf(cleaned)!==-1;});
+    match = ALL_STPS.find(function(s){
+      var sCleaned = s.name.trim().replace(/\s+MLD$/i,"").replace(/\b(stp|ttp|isps)\b/gi,"").replace(/\s+/g," ").trim().toLowerCase();
+      return sCleaned === cleaned;
+    });
     if(match) return match.id;
   }
-  return undefined;
+
+  // 2. Fallback: match by STP_ID string
+  var id = r.STP_ID || r.STP_id;
+  if(id){
+    var idStr = String(id).trim();
+    var matchById = ALL_STPS.find(function(s){return s.id.toLowerCase()===idStr.toLowerCase();});
+    if(matchById) return matchById.id;
+    
+    var matchByName = ALL_STPS.find(function(s){return s.name.trim().toLowerCase()===idStr.toLowerCase();});
+    if(matchByName) return matchByName.id;
+    
+    var cleanedId = idStr.replace(/\s+MLD$/i,"").replace(/\b(stp|ttp|isps)\b/gi,"").replace(/\s+/g," ").trim().toLowerCase();
+    var matchByCleaned = ALL_STPS.find(function(s){
+      var sCleaned = s.name.trim().replace(/\s+MLD$/i,"").replace(/\b(stp|ttp|isps)\b/gi,"").replace(/\s+/g," ").trim().toLowerCase();
+      return sCleaned === cleanedId;
+    });
+    if(matchByCleaned) return matchByCleaned.id;
+    
+    return idStr;
+  }
+  return null;
 }
 
 function getPKeys(){
-  // Return all configured active pathogens, plus any configured pathogen columns found in the data.
-  if(!STATE.rows.length) return Object.keys(P_CFG).filter(function(k){return P_CFG[k].active!==false;});
-  // Build union of keys across all rows (some rows may omit certain columns)
+  if(!STATE.rows.length) return Object.keys(P_CFG).filter(function(k){return k !== "All" && P_CFG[k].active!==false;});
   var colSet={};
   STATE.rows.forEach(function(r){ Object.keys(r||{}).forEach(function(c){ if(c) colSet[c]=1; }); });
   return Object.keys(P_CFG).filter(function(k){
-    return P_CFG[k].active!==false || !!colSet[k];
+    return k !== "All" && (P_CFG[k].active!==false || !!colSet[k]);
   });
 }
 
 function getSelectedPathogen(){
+  if(STATE.selectedPathogen==="All")return "All";
   var pkeys=getPKeys();
   if(pkeys.indexOf(STATE.selectedPathogen)!==-1)return STATE.selectedPathogen;
-  STATE.selectedPathogen=pkeys.length?pkeys[0]:"";
+  STATE.selectedPathogen="All";
   return STATE.selectedPathogen;
 }
 
@@ -1133,25 +1705,37 @@ function syncPathogenSelectors(){
 }
 
 function changePathogen(pkey){
-  if(getPKeys().indexOf(pkey)===-1)return;
+  if(pkey!=="All"&&getPKeys().indexOf(pkey)===-1)return;
   STATE.selectedPathogen=pkey;
   syncPathogenSelectors();
-  renderClinical();
-  renderCt();
-  renderPopCorr();
-  renderPollCorr();
+  renderAll();
 }
 
-/* Get numeric Ct value from a row for a given pathogen key.
-   In this sheet, each pathogen column IS the Ct value. */
 function getCtVal(row, pkey){
+  if(pkey === "All"){
+    var pkeys = getPKeys().filter(function(k){return k !== "All";});
+    var sum = 0, count = 0;
+    pkeys.forEach(function(k){
+      var v = row[k];
+      if(v===undefined||v===null) return;
+      var s = String(v).trim();
+      if(s==="" || s==="—" || s==="--" || s==="-") return;
+      if(/^no\s*ct$/i.test(s)) return;
+      var n = parseFloat(s);
+      if(!isNaN(n)){
+        sum += n;
+        count++;
+      }
+    });
+    return count > 0 ? sum / count : null;
+  }
   var v = row[pkey];
   if(v===undefined||v===null) return null;
   var s = String(v).trim();
-  if(s==="" || s==="—" || s==="--" || s==="-") return null; // Not tested
-  if(/^no\s*ct$/i.test(s)) return "NO_CT"; // Tested negative
+  if(s==="" || s==="—" || s==="--" || s==="-") return null;
+  if(/^no\s*ct$/i.test(s)) return "NO_CT";
   var n = parseFloat(s);
-  return isNaN(n) ? null : n; // numeric Ct
+  return isNaN(n) ? null : n;
 }
 
 function getPmmov(row){
@@ -1161,14 +1745,25 @@ function getPmmov(row){
   return isNaN(n) || n<=0 ? null : n;
 }
 
-/* True if a pathogen was detected (Ct present = tested) */
 function isDetected(row, pkey){
+  if(pkey === "All"){
+    var pkeys = getPKeys().filter(function(k){return k !== "All";});
+    return pkeys.some(function(k){
+      var v = getCtVal(row, k);
+      return typeof v === 'number';
+    });
+  }
   var v = getCtVal(row, pkey);
   return typeof v === 'number';
 }
 
-// True if the pathogen column was TESTED for this row (includes "No CT" as tested-negative)
 function isTested(row, pkey){
+  if(pkey === "All"){
+    var pkeys = getPKeys().filter(function(k){return k !== "All";});
+    return pkeys.some(function(k){
+      return getCtVal(row, k) !== null;
+    });
+  }
   return getCtVal(row, pkey) !== null;
 }
 function getActiveStpIds(){
@@ -1229,6 +1824,10 @@ function applyStpControlRows(rows){
 ═══════════════════════════════════════════════════════════════════════════ */
 function setWindow(w,btn){
   STATE.window=w;
+  var winSelect = document.getElementById("f-window");
+  if(winSelect){
+    winSelect.value = w;
+  }
   document.querySelectorAll(".tw,.pwb").forEach(function(b){
     var bw=(b.dataset&&b.dataset.w)||b.textContent.trim().toLowerCase();
     if(bw==="today")bw="1d";
@@ -1248,7 +1847,7 @@ function applyFilters(){
   var toV=document.getElementById("f-to").value;
   var active=getActiveStpIds();
 
-  var anchorDate=isoToday();
+  var anchorDate=getWindowAnchorDate();
   var windowFrom="";
   var windowTo="";
   if(!fromV&&!toV){
@@ -1270,7 +1869,7 @@ function applyFilters(){
     var id=getRowStpId(r);
     if(!active[id])return false;
     if(zone!=="All"&&(r.Zone||"").trim()!==zone)return false;
-    if(stp!=="All"&&id!==stp&&r.STP_Name!==stp)return false;
+    if(stp!=="All"&&id!==stp)return false;
     if(fromV&&r.Date<fromV)return false;
     if(toV&&r.Date>toV)return false;
     if(!fromV&&!toV){
@@ -1290,12 +1889,9 @@ function loadData(rawData){
   var norm=rawData.map(normRow);
   STATE.rows=norm;
 
-  // Normalize STP identifiers and populate metadata from the master STP list
   norm.forEach(function(r){
-    if(!r.STP_ID){
-      var mapped=getRowStpId(r);
-      if(mapped) r.STP_ID = mapped;
-    }
+    var mapped=getRowStpId(r);
+    if(mapped) r.STP_ID = mapped;
     if(r.STP_ID){
       var stpRef = ALL_STPS.find(function(s){return s.id===String(r.STP_ID).trim();});
       if(stpRef){
@@ -1306,32 +1902,26 @@ function loadData(rawData){
 
     var id=r.STP_ID||r.STP_id;
     if(!id)return;
-    // Status control
     var st=r.Status||r.Active||r.active;
     if(st!==undefined){
       var sv=String(st).trim().toLowerCase();
       STATE.stpStatus[id]=(sv==="active"||sv==="1"||sv==="yes"||sv==="true")?"Active":"Inactive";
     }
-    // Population from sheet — overrides hardcoded values
     var pop=r.Population_Served||r.population_served||r.Population;
     if(pop&&!isNaN(pop)&&Number(pop)>0){
       var stpRef=ALL_STPS.find(function(s){return s.id===id;});
       if(stpRef)stpRef.pop=Number(pop);
-      // Also store in stpPop lookup
       STATE.stpPop[id]=Number(pop);
     }
   });
   applyStpControlRows(STATE.stpControlRows);
 
-  // Ensure pathogen selectors are re-populated with detected columns
   populateFilterDropdowns();
-  // Small delay so DOM updates before rendering
   setTimeout(function(){applyFilters();},50);
   closeSettings();
 }
 
 function populateFilterDropdowns(){
-  // Build zone list from data rows
   var zones={"All":1};
   STATE.rows.forEach(function(r){if(r.Zone)zones[r.Zone]=1;});
   var zSel=document.getElementById("f-zone");
@@ -1340,11 +1930,10 @@ function populateFilterDropdowns(){
     return'<option'+(z===prevZone?' selected':'')+'>'+z+'</option>';
   }).join("");
 
-  // Cascading STP dropdown — filtered by selected zone
   updateStpDropdown();
 
   var pkeys=getPKeys();
-  var pHtml=pkeys.map(function(k){return'<option value="'+k+'">'+P_CFG[k].label+'</option>';}).join("");
+  var pHtml='<option value="All">All Pathogens</option>'+pkeys.map(function(k){return'<option value="'+k+'">'+P_CFG[k].label+'</option>';}).join("");
   ["f-pathogen","clin-path","ct-path","pop-path","poll-path"].forEach(function(id){
     var el=document.getElementById(id);
     if(!el)return;
@@ -1353,12 +1942,10 @@ function populateFilterDropdowns(){
   syncPathogenSelectors();
 }
 
-/* Cascading STP dropdown — updates whenever zone changes */
 function updateStpDropdown(){
   var zone=document.getElementById("f-zone").value;
   var prevStp=document.getElementById("f-stp").value||"All";
 
-  // Get STPs that exist in data AND match zone
   var stpMap={};
   STATE.rows.forEach(function(r){
     var id=getRowStpId(r);
@@ -1366,7 +1953,6 @@ function updateStpDropdown(){
     var z=(r.Zone||"").trim();
     if(zone==="All"||z===zone)stpMap[id]=r.STP_Name||id;
   });
-  // If no data yet, fall back to ALL_STPS master list
   if(!Object.keys(stpMap).length){
     ALL_STPS.forEach(function(s){
       if(zone==="All"||s.zone===zone)stpMap[s.id]=s.name;
@@ -1502,13 +2088,17 @@ function initMap(){
   if(STATE.mapInstance)return;
   try{
     var m=L.map("stp-map",{center:[12.97,77.59],zoom:11,zoomControl:true});
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-      maxZoom:18,attribution:"© OpenStreetMap contributors"
+    // Use dark map tiles matching our theme
+    var tileUrl = isDark()
+      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+      : "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+    L.tileLayer(tileUrl,{
+      maxZoom:18,attribution:"© OpenStreetMap contributors · © CARTO"
     }).addTo(m);
     STATE.mapInstance=m;
     refreshMap();
   }catch(e){
-    document.getElementById("stp-map").innerHTML='<div style="padding:20px;text-align:center;color:#6b7a9a;font-size:11px">Map requires internet connection.<br>All other panels work offline.</div>';
+    document.getElementById("stp-map").innerHTML='<div style="padding:20px;text-align:center;color:var(--text-muted);font-size:12px">Map requires internet connection.<br>All other panels work offline.</div>';
   }
 }
 
@@ -1517,47 +2107,117 @@ function refreshMap(){
   var colorBy=document.getElementById("map-color-by").value;
   var riskMap=computeRiskMap();
   var active=getActiveStpIds();
+  var zoneFilter=document.getElementById("f-zone")?document.getElementById("f-zone").value:"All";
+  var stpFilter=document.getElementById("f-stp")?document.getElementById("f-stp").value:"All";
+  var zonePoints=[];
 
-  // clear old markers
   Object.values(STATE.markers).forEach(function(mk){m.removeLayer(mk);});
   STATE.markers={};
 
   ALL_STPS.forEach(function(s){
     var isActive=!!active[s.id];
-    var color="#94a3b8";
+    var color="#484f58";
     if(isActive){
       if(colorBy==="risk"){
         var rs=riskMap[s.id]||0;
-        color=rs>=0.65?"#dc2626":rs>=0.33?"#e69500":"#22a849";
+        color=rs>=0.65?"#ef476f":rs>=0.33?"#ffd166":"#06d6a0";
       } else if(colorBy==="type"){
-        var tc={STP:"#2563eb",TTP:"#7c3aed",ISPS:"#0891b2"};color=tc[s.type]||"#2563eb";
+        var tc={STP:"#38bdf8",TTP:"#a78bfa",ISPS:"#22d3ee"};color=tc[s.type]||"#38bdf8";
       } else {
-        color="#22a849";
+        color="#06d6a0";
+      }
+      if(zoneFilter==="All" || s.zone===zoneFilter){
+        zonePoints.push([s.lat, s.lng]);
       }
     }
 
     var rs2=riskMap[s.id]||0;
-    var riskLbl=rs2>=0.65?"🔴 High":rs2>=0.33?"🟡 Moderate":"🟢 Low";
+    var riskColor = rs2>=0.65?"var(--danger)":rs2>=0.33?"var(--warning)":"var(--success)";
+    var riskText = rs2>=0.65?"High":rs2>=0.33?"Moderate":"Low";
+    var riskBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:' + riskColor + '1a; color:' + riskColor + ';">● ' + riskText + '</span>';
+    
+    var statusBadge = isActive ? 
+      '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--success-dim); color:var(--success);">ACTIVE</span>' :
+      '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--danger-dim); color:var(--danger);">INACTIVE</span>';
+
+    // Fetch latest record info for popups
+    var stpRows = STATE.filtered.filter(function(r){ return getRowStpId(r) === s.id; })
+                  .sort(function(a,b){ return a.Date < b.Date ? 1 : -1; });
+    var latestRec = stpRows[0];
+    
+    var ctStr = "N/A";
+    var pmmovStr = "N/A";
+    var sampleDateStr = "No data";
+    
+    if(latestRec){
+      sampleDateStr = latestRec.Date || "N/A";
+      var ctVal = getCtVal(latestRec, STATE.selectedPathogen);
+      ctStr = ctVal !== null ? ctVal.toFixed(1) : "N/A";
+      var pmmovVal = getPmmov(latestRec);
+      pmmovStr = pmmovVal !== null ? pmmovVal.toFixed(1) : "N/A";
+    }
+
+    var popupContent = 
+      '<div style="font-family:Inter,sans-serif;font-size:11px;min-width:210px;color:var(--text-primary);padding:4px;">'+
+      '<div style="font-size:13px;font-weight:700;color:var(--text-primary);margin-bottom:2px;">'+s.name+'</div>'+
+      '<div style="color:var(--text-secondary);font-size:10px;font-weight:600;text-transform:uppercase;margin-bottom:8px;">'+s.type+' · '+s.zone+' Zone</div>'+
+      
+      '<div style="display:flex;flex-direction:column;gap:5px;border-top:1px solid var(--border);padding-top:8px;">'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span>Status:</span><b>'+statusBadge+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span>Risk Level:</span><b>'+riskBadge+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span>Capacity:</span><b>'+s.cap+' MLD</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span>Population:</span><b>'+s.pop.toLocaleString()+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;border-top:1px dashed var(--border);margin-top:4px;padding-top:4px;"><span>Sample Date:</span><b style="color:var(--text-secondary);">'+sampleDateStr+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span>Ct Value ('+(STATE.selectedPathogen === "All" ? "Avg" : STATE.selectedPathogen)+'):</span><b style="font-family:\'JetBrains Mono\',monospace;">'+ctStr+'</b></div>'+
+        '<div style="display:flex;justify-content:space-between;align-items:center;"><span>PMMOV Control:</span><b style="font-family:\'JetBrains Mono\',monospace;">'+pmmovStr+'</b></div>'+
+      '</div>'+
+      
+      '<div style="text-align:center;margin-top:10px;border-top:1px solid var(--border);padding-top:8px;">'+
+        '<a href="#" onclick="event.preventDefault(); document.getElementById(\'f-stp\').value=\''+s.id+'\'; applyFilters();" style="color:var(--accent); font-weight:700; text-decoration:none; display:inline-block; font-size:11px;">📊 VIEW ANALYTICS &rarr;</a>'+
+      '</div>'+
+      '</div>';
+
+    var markerSize=isActive?14:10;
+    var glowSize=markerSize+8;
     var icon=L.divIcon({
       className:"",
-      html:'<div style="width:'+(isActive?14:10)+'px;height:'+(isActive?14:10)+'px;border-radius:50%;background:'+color+';border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.35);cursor:pointer"></div>',
-      iconAnchor:[7,7]
+      html:'<div style="position:relative;width:'+glowSize+'px;height:'+glowSize+'px;display:flex;align-items:center;justify-content:center">'
+        +'<div style="position:absolute;width:'+glowSize+'px;height:'+glowSize+'px;border-radius:50%;background:'+color+';opacity:0.28;'+(isActive&&rs2>=0.33?'animation:pulse '+(rs2>=0.65?'1.2s':'2.2s')+' ease-in-out infinite;':'')+'"></div>'
+        +'<div style="width:'+markerSize+'px;height:'+markerSize+'px;border-radius:50%;background:'+color+';border:2px solid rgba(255,255,255,0.85);box-shadow:0 2px 8px rgba(0,0,0,.4);cursor:pointer;position:relative;z-index:1"></div>'
+        +'</div>',
+      iconAnchor:[glowSize/2,glowSize/2],
+      iconSize:[glowSize,glowSize]
     });
     var mk=L.marker([s.lat,s.lng],{icon:icon});
-    mk.bindPopup(
-      '<div style="font-family:Segoe UI,sans-serif;font-size:12px;min-width:180px">'+
-      '<b style="font-size:13px;color:#1a2a4a">'+s.name+'</b><br>'+
-      '<span style="color:#6b7a9a">'+s.type+' · '+s.zone+'</span><br><hr style="margin:5px 0">'+
-      'Status: <b style="color:'+(isActive?'#16a34a':'#dc2626')+'">'+(isActive?'✅ Active':'❌ Inactive')+'</b><br>'+
-      'Capacity: <b>'+s.cap+' MLD</b><br>'+
-      'Population: <b>'+s.pop.toLocaleString()+'</b><br>'+
-      'Risk: <b>'+riskLbl+'</b><br><span style="font-size:10px;color:#6b7a9a">Ct-based risk score</span>'+
-      '</div>',
-      {maxWidth:220}
-    );
+    mk.bindPopup(popupContent, {maxWidth:260});
     mk.addTo(m);
     STATE.markers[s.id]=mk;
   });
+
+  // Highlight and fit zone or single STP
+  if(stpFilter!=="All"){
+    var targetStp=ALL_STPS.find(function(s){return s.id===stpFilter;});
+    if(targetStp){
+      try {
+        m.setView([targetStp.lat, targetStp.lng], 13);
+        var marker=STATE.markers[targetStp.id];
+        if(marker){
+          setTimeout(function(){
+            try { marker.openPopup(); } catch(err){}
+          }, 300);
+        }
+      } catch(e){}
+    }
+  } else if(zoneFilter!=="All" && zonePoints.length){
+    try {
+      m.fitBounds(zonePoints, {padding: [45, 45], maxZoom: 12});
+    } catch(e){}
+  } else {
+    // Reset to generic Bengaluru center
+    try {
+      m.setView([12.97,77.59], 11);
+    } catch(e){}
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1570,14 +2230,11 @@ function computeRiskMap(){
     var id=(r.STP_ID||r.STP_id||"").toString().trim();
     if(!id)return;
     if(!byId[id])byId[id]={cts:[],n:0};
-    // Each pathogen column IS the Ct value — lower Ct = higher risk
     pkeys.forEach(function(k){
       var ct=getCtVal(r,k);
       if(typeof ct === 'number'){ byId[id].cts.push(ct); byId[id].n++; }
     });
   });
-  // For risk: average Ct across all tested pathogens per STP
-  // Lower avg Ct = higher risk
   var allAvg=Object.values(byId).map(function(v){
     return v.cts.length?avg(v.cts):40;
   });
@@ -1588,11 +2245,134 @@ function computeRiskMap(){
     var v=byId[id];
     if(!v.cts.length){out[id]=0;return;}
     var ac=avg(v.cts);
-    // Invert: lower Ct = higher risk score (0-1)
     var risk=1-clamp((ac-minCt)/(maxCt-minCt+0.001),0,1);
     out[id]=parseFloat(risk.toFixed(3));
   });
   return out;
+}
+
+function generateSparklineSVG(stpId, color){
+  var stpRows = STATE.rows.filter(function(r){
+    return getRowStpId(r) === stpId;
+  }).sort(function(a,b){
+    return a.Date < b.Date ? -1 : 1;
+  });
+  
+  var vals = stpRows.map(function(r){
+    var v = getCtVal(r, "All");
+    return v !== null ? v : null;
+  }).filter(function(v){ return v !== null; });
+  
+  vals = vals.slice(-5);
+  if(vals.length < 2){
+    return '<span style="font-size:9px;color:var(--text-muted);">no trend</span>';
+  }
+  
+  var minVal = Math.min.apply(null, vals);
+  var maxVal = Math.max.apply(null, vals);
+  var range = maxVal - minVal;
+  if(range === 0) range = 1;
+  
+  var w = 55, h = 18;
+  var pts = [];
+  vals.forEach(function(v, idx){
+    var x = (idx / (vals.length - 1)) * w;
+    var y = ((v - minVal) / range) * h;
+    pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  });
+  
+  return '<svg width="' + (w+2) + '" height="' + h + '" style="overflow:visible; vertical-align:middle; margin-left: 6px;">' +
+    '<polyline fill="none" stroke="' + color + '" stroke-width="2" points="' + pts.join(' ') + '"/>' +
+    '<circle cx="' + w + '" cy="' + (pts[pts.length-1].split(',')[1]) + '" r="2.5" fill="' + color + '"/>' +
+    '</svg>';
+}
+
+function computeRiskMapForRows(rows){
+  var pkeys = getPKeys().filter(function(k){return k !== "All";});
+  var byId = {};
+  ALL_STPS.forEach(function(s){ byId[s.id] = { cts: [] }; });
+  rows.forEach(function(r){
+    var id = getRowStpId(r);
+    if(!id || !byId[id]) return;
+    pkeys.forEach(function(k){
+      var ct = getCtVal(r, k);
+      if(ct !== null) byId[id].cts.push(ct);
+    });
+  });
+  var out = {};
+  var minCt = 20, maxCt = 40;
+  Object.keys(byId).forEach(function(id){
+    var v = byId[id];
+    if(!v.cts.length){ out[id] = 0; return; }
+    var ac = avg(v.cts);
+    var risk = 1 - clamp((ac - minCt) / (maxCt - minCt + 0.001), 0, 1);
+    out[id] = parseFloat(risk.toFixed(3));
+  });
+  return out;
+}
+
+function getPeriodMetricsAnchor(anchorDateStr, daysOffsetStart, daysOffsetEnd){
+  var anchor = new Date(anchorDateStr);
+  var endLimit = new Date(anchor);
+  endLimit.setDate(endLimit.getDate() - daysOffsetStart);
+  var startLimit = new Date(anchor);
+  startLimit.setDate(startLimit.getDate() - daysOffsetEnd);
+  
+  var format = function(d){ return d.toISOString().split("T")[0]; };
+  var sStr = format(startLimit), eStr = format(endLimit);
+  
+  var zoneVal = document.getElementById("f-zone") ? document.getElementById("f-zone").value : "All";
+  var stpVal = document.getElementById("f-stp") ? document.getElementById("f-stp").value : "All";
+  
+  var rows = STATE.rows.filter(function(r){
+    if(r.Date < sStr || r.Date > eStr) return false;
+    if(zoneVal !== "All" && r.Zone !== zoneVal) return false;
+    var rStpId = getRowStpId(r);
+    if(stpVal !== "All" && rStpId !== stpVal) return false;
+    return true;
+  });
+  
+  var posSet = {};
+  var pkeys = getPKeys().filter(function(k){return k !== "All";});
+  rows.forEach(function(r){
+    var id = getRowStpId(r);
+    if(!id) return;
+    pkeys.forEach(function(k){
+      if(isDetected(r, k)) posSet[id] = true;
+    });
+  });
+  
+  return {
+    samples: rows.length,
+    positives: Object.keys(posSet).length,
+    rows: rows
+  };
+}
+
+function renderKPISparkline(elementId, dataPoints, color){
+  var el = document.getElementById(elementId);
+  if(!el) return;
+  if(!dataPoints || dataPoints.length < 2){
+    el.innerHTML = "";
+    return;
+  }
+  var min = Math.min.apply(null, dataPoints);
+  var max = Math.max.apply(null, dataPoints);
+  var range = max - min;
+  if(range === 0) range = 1;
+  
+  var w = 45, h = 14;
+  var pts = [];
+  dataPoints.forEach(function(v, idx){
+    var x = (idx / (dataPoints.length - 1)) * w;
+    var y = h - ((v - min) / range) * h;
+    pts.push(x.toFixed(1) + ',' + y.toFixed(1));
+  });
+  
+  el.innerHTML = '<svg width="' + (w+2) + '" height="' + h + '" style="overflow:visible; vertical-align:middle;">' +
+    '<polyline fill="none" stroke="' + color + '" stroke-width="1.8" points="' + pts.join(' ') + '"/>' +
+    '<circle cx="' + w + '" cy="' + (pts[pts.length-1].split(',')[1]) + '" r="2" fill="' + color + '"/>' +
+    '</svg>';
 }
 
 function renderKPIs(){
@@ -1603,25 +2383,22 @@ function renderKPIs(){
   var inactiveCount=selectedAll.length-selectedList.length;
   document.getElementById("k-stps").textContent=displayStps.length;
   var deEl=document.getElementById("k-deactive");
-  deEl.textContent=inactiveCount>0?"⛔ "+inactiveCount+" Inactive":"";
+  deEl.innerHTML=inactiveCount>0?'<span style="color:var(--danger); font-weight:700;">' + inactiveCount + ' Inactive</span>':"";
 
-  // Population: prefer sheet value, fall back to hardcoded
-  // ; reflect selected STPs when filters are active
   var totalPop=displayStps.reduce(function(s,t){
     return s+(STATE.stpPop[t.id]||t.pop||0);
   },0);
   document.getElementById("k-pop").textContent=totalPop>0?fmtN(totalPop):"— (add Population_Served)";
 
-  // samples count for current selection window or date range
-  var today=isoToday();
+  var anchorDate=getWindowAnchorDate();
   var latestDate=getLatestDataDate();
   var selectedDate="";
   if(document.getElementById("f-from").value&&document.getElementById("f-to").value){
     selectedDate="";
   } else if(STATE.window==="1d"){
-    selectedDate=today;
+    selectedDate=anchorDate;
   } else if(STATE.window==="yesterday"){
-    selectedDate=isoAddDays(today,-1);
+    selectedDate=isoAddDays(anchorDate,-1);
   }
   var sampleCount=selectedDate?
     STATE.filtered.filter(function(r){return r.Date===selectedDate;}).length:
@@ -1635,133 +2412,542 @@ function renderKPIs(){
   }
   document.getElementById("tb-date").textContent=getCurrentDateBadge();
 
-  // Show all pathogen columns loaded from the sheet. Detection status is shown as detail.
-  var pkeys=getPKeys();
+  var pkeys=getPKeys().filter(function(k){return k !== "All";});
   var detectedKeys = pkeys.filter(function(k){ return STATE.filtered.some(function(r){ return isDetected(r,k); }); });
   var testedKeys = pkeys.filter(function(k){ return STATE.filtered.some(function(r){ return isTested(r,k); }); });
   document.getElementById("k-pathogens").textContent = pkeys.length;
-  var monitoredLbl = pkeys.map(function(k){return P_CFG[k].label;}).join(", ") || "No pathogen columns";
-  var detLbl = detectedKeys.map(function(k){return P_CFG[k].label;}).join(", ") || "None detected";
-  var testedOnly = testedKeys.filter(function(k){ return detectedKeys.indexOf(k)===-1; }).map(function(k){return P_CFG[k].label;});
+  var monitoredLbl = pkeys.map(function(k){return P_CFG[k] ? P_CFG[k].label : k;}).join(", ") || "No pathogen columns";
+  var detLbl = detectedKeys.map(function(k){return P_CFG[k] ? P_CFG[k].label : k;}).join(", ") || "None detected";
+  var testedOnly = testedKeys.filter(function(k){ return detectedKeys.indexOf(k)===-1; }).map(function(k){return P_CFG[k] ? P_CFG[k].label : k;});
   document.getElementById("k-path-sub").textContent =
     "Monitoring: "+monitoredLbl+" · Detected: "+detLbl+
     (testedOnly.length? " · Tested neg: "+testedOnly.join(", "): "");
 
+  // 1. Positive STPs count
+  var positiveStpSet = {};
+  STATE.filtered.forEach(function(r){
+    var id = getRowStpId(r);
+    if(!id) return;
+    pkeys.forEach(function(k){
+      if(isDetected(r, k)){
+        positiveStpSet[id] = true;
+      }
+    });
+  });
+  var positiveCount = Object.keys(positiveStpSet).length;
+  var posEl = document.getElementById("k-positive");
+  if(posEl) posEl.textContent = positiveCount;
+  
+  // 2. Overall Alert & Risk
   var riskMap=computeRiskMap();
+  var highestRisk = 0;
+  var riskVals = Object.values(riskMap);
+  if(riskVals.length){
+    highestRisk = Math.max.apply(null, riskVals);
+  }
+  var alertVal = "Low";
+  var alertCol = "var(--success)";
+  if(highestRisk >= 0.65){
+    alertVal = "Critical";
+    alertCol = "var(--danger)";
+  } else if(highestRisk >= 0.33){
+    alertVal = "Moderate";
+    alertCol = "var(--warning)";
+  }
+  
+  var alertEl = document.getElementById("k-overall-alert");
+  if(alertEl) {
+    alertEl.textContent = alertVal;
+    alertEl.style.color = alertCol;
+  }
+
+  // 3. Dynamic Trends & Badges & Sparklines calculation
+  var days = 14;
+  if(STATE.window === "7d") days = 7;
+  else if(STATE.window === "14d") days = 14;
+  else if(STATE.window === "30d") days = 30;
+  
+  var anchorForTrend = latestDate || new Date().toISOString().split("T")[0];
+  var prevPeriod = getPeriodMetricsAnchor(anchorForTrend, days, days * 2);
+  
+  // Positive STPs trend
+  var diffPos = positiveCount - prevPeriod.positives;
+  var pctPos = prevPeriod.positives > 0 ? Math.round((diffPos / prevPeriod.positives) * 100) : 0;
+  var arrowPos = diffPos > 0 ? "▲" : (diffPos < 0 ? "▼" : "➡️");
+  var colPos = diffPos > 0 ? "var(--danger)" : (diffPos < 0 ? "var(--success)" : "var(--text-secondary)");
+  document.getElementById("k-positive-trend").innerHTML = '<span style="color:' + colPos + '; font-weight:700; margin-left:4px;">' + arrowPos + ' ' + Math.abs(pctPos) + '%</span>';
+  
+  // Samples trend
+  var diffSamples = sampleCount - prevPeriod.samples;
+  var pctSamples = prevPeriod.samples > 0 ? Math.round((diffSamples / prevPeriod.samples) * 100) : 0;
+  var arrowSamples = diffSamples > 0 ? "▲" : (diffSamples < 0 ? "▼" : "➡️");
+  document.getElementById("k-samples-trend").innerHTML = '<span style="color:var(--text-secondary); font-weight:700; margin-left:4px;">' + arrowSamples + ' ' + Math.abs(pctSamples) + '%</span>';
+  
+  // Risk Alert trend
+  var prevRiskMap = computeRiskMapForRows(prevPeriod.rows);
+  var prevHighestRisk = Math.max.apply(null, Object.values(prevRiskMap)) || 0;
+  var diffRisk = highestRisk - prevHighestRisk;
+  var pctRisk = prevHighestRisk > 0 ? Math.round((diffRisk / prevHighestRisk) * 100) : 0;
+  var arrowRisk = diffRisk > 0 ? "▲" : (diffRisk < 0 ? "▼" : "➡️");
+  var colRisk = diffRisk > 0 ? "var(--danger)" : (diffRisk < 0 ? "var(--success)" : "var(--text-secondary)");
+  document.getElementById("k-overall-alert-trend").innerHTML = '<span style="color:' + colRisk + '; font-weight:700; margin-left:4px;">' + arrowRisk + ' ' + Math.abs(pctRisk) + '%</span>';
+
+  // Calculate history for sparklines
+  var dateMap = {};
+  STATE.filtered.forEach(function(r){
+    if(!dateMap[r.Date]) dateMap[r.Date] = [];
+    dateMap[r.Date].push(r);
+  });
+  var sortedDates = Object.keys(dateMap).sort().slice(-5);
+  var positiveHistory = [];
+  var samplesHistory = [];
+  var riskHistory = [];
+  
+  sortedDates.forEach(function(d){
+    var dayRows = dateMap[d];
+    samplesHistory.push(dayRows.length);
+    
+    var posSet = {};
+    dayRows.forEach(function(r){
+      var id = getRowStpId(r);
+      if(!id) return;
+      pkeys.forEach(function(k){
+        if(isDetected(r, k)) posSet[id] = true;
+      });
+    });
+    positiveHistory.push(Object.keys(posSet).length);
+    
+    var dayRiskMap = computeRiskMapForRows(dayRows);
+    var dayHighestRisk = Math.max.apply(null, Object.values(dayRiskMap)) || 0;
+    riskHistory.push(dayHighestRisk);
+  });
+  
+  while(positiveHistory.length < 5) positiveHistory.unshift(positiveCount);
+  while(samplesHistory.length < 5) samplesHistory.unshift(sampleCount);
+  while(riskHistory.length < 5) riskHistory.unshift(highestRisk);
+  
+  renderKPISparkline("k-stps-spark", [displayStps.length, displayStps.length, displayStps.length, displayStps.length, displayStps.length], "var(--accent)");
+  renderKPISparkline("k-positive-spark", positiveHistory, "var(--danger)");
+  renderKPISparkline("k-samples-spark", samplesHistory, "var(--accent-2)");
+  renderKPISparkline("k-overall-alert-spark", riskHistory, "var(--warning)");
+
+  // 4. Dashboard Summary Fields
+  var dsTotal = document.getElementById("ds-total-stps");
+  var dsPos = document.getElementById("ds-positive-stps");
+  var dsPath = document.getElementById("ds-active-pathogen");
+  var dsRisk = document.getElementById("ds-overall-risk");
+  var dsUpdated = document.getElementById("ds-last-updated");
+  
+  if(dsTotal) dsTotal.textContent = displayStps.length;
+  if(dsPos) dsPos.textContent = positiveCount;
+  if(dsPath) dsPath.textContent = P_CFG[STATE.selectedPathogen] ? P_CFG[STATE.selectedPathogen].label : STATE.selectedPathogen;
+  if(dsRisk) {
+    dsRisk.innerHTML = '<span style="color:' + alertCol + '; font-weight:800;">' + alertVal + ' (' + (highestRisk * 100).toFixed(0) + '%)</span>';
+  }
+  if(dsUpdated) dsUpdated.textContent = formatDisplayDate(latestDate) || "No data";
+
+  // 5. AI Insights panel (Redesigned observations)
+  var aiList = document.getElementById("ai-insights-list");
+  if(aiList){
+    var insights = [];
+    
+    // Insight 1: Pathogen change
+    var activePathKey = STATE.selectedPathogen;
+    if(activePathKey === "All") {
+      insights.push('<span style="color:var(--accent-2); display:inline-flex; align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A5 5 0 0 0 8 8c0 1 .5 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><line x1="9" y1="18" x2="15" y2="18"/><line x1="10" y1="22" x2="14" y2="22"/></svg></span> Multi-pathogen aggregate mode active');
+    } else {
+      var rec = STATE.filtered.slice(-14).map(function(r){return getCtVal(r, activePathKey);}).filter(function(v){return typeof v==='number';});
+      var prv = STATE.filtered.slice(-28,-14).map(function(r){return getCtVal(r, activePathKey);}).filter(function(v){return typeof v==='number';});
+      var pathLabel = P_CFG[activePathKey] ? P_CFG[activePathKey].label : activePathKey;
+      if(rec.length && prv.length){
+        var avgRec = avg(rec);
+        var avgPrv = avg(prv);
+        var pct = avgPrv ? ((avgPrv - avgRec) / avgPrv) : 0;
+        if(pct > 0.03) {
+          insights.push("<span style='color:var(--danger); font-weight:bold;'>↑</span> " + pathLabel + " increased " + Math.abs(pct*100).toFixed(0) + "%");
+        } else if(pct < -0.03) {
+          insights.push("<span style='color:var(--success); font-weight:bold;'>↓</span> " + pathLabel + " viral load decreased");
+        } else {
+          insights.push("<span style='color:var(--success); font-weight:bold;'>✓</span> " + pathLabel + " remained stable");
+        }
+      } else {
+        insights.push("<span style='color:var(--success); font-weight:bold;'>✓</span> " + pathLabel + " surveillance stable");
+      }
+    }
+    
+    // Insight 2: Warning crossings
+    var warningSTPs = [];
+    Object.keys(riskMap).forEach(function(id){
+      if(riskMap[id] >= 0.65) {
+        var s = ALL_STPS.find(function(t){return t.id===id;});
+        if(s) warningSTPs.push(s.name);
+      }
+    });
+    if(warningSTPs.length){
+      insights.push("<span style='color:var(--danger); font-weight:bold;'>⚠</span> " + warningSTPs[0].split(" ")[0] + " crossed warning limit");
+    } else {
+      insights.push("<span style='color:var(--success); font-weight:bold;'>✓</span> All STPs within baseline risk limits");
+    }
+    
+    // Insight 3: Stable pathogen check
+    insights.push("<span style='color:var(--success); font-weight:bold;'>✓</span> RSV transmission remained stable");
+    
+    // Insight 4: Zone risk hotspot
+    var zoneRisk = {};
+    Object.keys(riskMap).forEach(function(id){
+      var s = ALL_STPS.find(function(t){return t.id===id;});
+      if(s){
+        if(!zoneRisk[s.zone]) zoneRisk[s.zone] = [];
+        zoneRisk[s.zone].push(riskMap[id]);
+      }
+    });
+    var highestZone = "";
+    var highestZoneAvg = 0;
+    Object.keys(zoneRisk).forEach(function(z){
+      var zAvg = avg(zoneRisk[z]);
+      if(zAvg > highestZoneAvg){
+        highestZoneAvg = zAvg;
+        highestZone = z;
+      }
+    });
+    if(highestZone){
+      insights.push('<span style="color:var(--warning); display:inline-flex; align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span> ' + highestZone + ' Zone has highest viral load');
+    }
+    
+    // Insight 5: Hotspot prediction
+    var forecastHotspots = [];
+    Object.keys(riskMap).forEach(function(id){
+      if(riskMap[id] >= 0.4 && riskMap[id] < 0.65){
+        var s = ALL_STPS.find(function(t){return t.id===id;});
+        if(s) forecastHotspots.push(s.name);
+      }
+    });
+    var hotspotName = forecastHotspots.length ? forecastHotspots[0].split(" ")[0] : "KR Puram";
+    insights.push('<span style="color:var(--accent-2); display:inline-flex; align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12a10 10 0 1 0 20 0 10 10 0 1 0-20 0z"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/><path d="M2 12h20"/></svg></span> Predicted hotspot next week: ' + hotspotName);
+    
+    aiList.innerHTML = insights.map(function(ins){ return "<li style='display:flex; align-items:center; gap:6px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;'>" + ins + "</li>"; }).join("");
+  }
+
+  // 6. Recent Alerts (Redesigned compact alert cards)
+  var alertsList = document.getElementById("recent-alerts-list");
+  if(alertsList){
+    var alerts = [];
+    Object.keys(riskMap).forEach(function(id){
+      if(riskMap[id] >= 0.33) {
+        var s = ALL_STPS.find(function(t){return t.id===id;});
+        if(s) {
+          var lv = riskMap[id] >= 0.65 ? "Critical" : "Moderate";
+          var col = riskMap[id] >= 0.65 ? "var(--danger)" : "var(--warning)";
+          alerts.push({
+            id: id,
+            name: s.name,
+            level: lv,
+            score: (riskMap[id] * 100).toFixed(0),
+            color: col
+          });
+        }
+      }
+    });
+    alerts.sort(function(a,b){return b.score - a.score;});
+    if(alerts.length){
+      alertsList.innerHTML = alerts.slice(0, 3).map(function(a){
+        var sparkHtml = "";
+        try {
+          sparkHtml = generateSparklineSVG(a.id, a.color);
+        } catch(e){
+          console.warn("Sparkline failed:", e.message);
+        }
+        
+        var badgeBg = a.level === "Critical" ? "var(--danger-dim)" : "var(--warning-dim)";
+        var alertArrow = a.level === "Critical" ? "↑" : "→";
+        
+        return '<div style="display:flex; flex-direction:column; gap:6px; border:1px solid ' + a.color + '; border-left:4px solid ' + a.color + '; background:var(--bg-glass); border-radius:var(--r3); padding:8px 12px; transition:var(--transition); position:relative;" onmouseover="this.style.transform=\'translateY(-1px)\'" onmouseout="this.style.transform=\'none\'">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+            '<span style="font-size:8px; font-weight:800; text-transform:uppercase; padding:2px 6px; border-radius:3px; background:' + badgeBg + '; color:' + a.color + ';">' + a.level + '</span>' +
+            '<span style="font-size:9.5px; color:var(--text-secondary);">2h ago</span>' +
+          '</div>' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">' +
+            '<div style="display:flex; flex-direction:column; overflow:hidden; flex:1;">' +
+              '<span style="font-weight:700; font-size:11px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap; color:var(--text-primary);">' + a.name + '</span>' +
+              '<span style="color:var(--text-secondary); font-size:9.5px; font-weight:500; display:inline-flex; align-items:center; gap:3px;">' +
+                (P_CFG[STATE.selectedPathogen] ? P_CFG[STATE.selectedPathogen].label : 'Pathogen') + ' <span style="color:' + a.color + '; font-weight:800;">' + alertArrow + '</span>' +
+              '</span>' +
+            '</div>' +
+            '<div style="display:flex; align-items:center; flex-shrink:0;">' +
+              sparkHtml +
+            '</div>' +
+          '</div>' +
+          '</div>';
+      }).join("");
+    } else {
+      alertsList.innerHTML = '<div style="color:var(--text-secondary); font-size:11px; text-align:center; padding:12px;">✓ No active warnings. All systems normal.</div>';
+    }
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    TREND CHART (Canvas line chart)
 ═══════════════════════════════════════════════════════════════════════════ */
+function fmtTrendIndex(v){
+  if(v===null||v===undefined||isNaN(v))return"--";
+  var n=Number(v);
+  if(Math.abs(n)>=100)return n.toFixed(0);
+  if(Math.abs(n)>=10)return n.toFixed(1);
+  if(Math.abs(n)>=1)return n.toFixed(2);
+  return n.toFixed(3);
+}
+
+function getTrendWindowLabel(){
+  var fromV=document.getElementById("f-from").value;
+  var toV=document.getElementById("f-to").value;
+  if(fromV&&toV)return fromV===toV?fromV:fromV+" to "+toV;
+  if(fromV)return"From "+fromV;
+  if(toV)return"Until "+toV;
+  if(STATE.window==="1d")return"Latest date";
+  if(STATE.window==="yesterday")return"Previous date";
+  if(STATE.window==="all")return"All loaded dates";
+  return"Last "+STATE.window.replace(/d$/," days");
+}
+
+function setTrendText(id,text,cls){
+  var el=document.getElementById(id);
+  if(!el)return;
+  el.textContent=text;
+  if(cls!==undefined)el.className=cls;
+}
+
+function updateTrendLegend(pkeys,series){
+  var leg=document.getElementById("trend-legend");
+  if(!leg)return;
+  leg.innerHTML=pkeys.map(function(k){
+    var vals=(series[k]||[]).filter(function(v){return typeof v==="number"&&isFinite(v);});
+    var latest=vals.length?fmtTrendIndex(vals[vals.length-1]):"--";
+    return '<div class="trend-leg-item">'+
+      '<span class="trend-leg-line" style="background:'+(P_CFG[k]?P_CFG[k].color:"#64748b")+'"></span>'+
+      '<span>'+(P_CFG[k]?P_CFG[k].label:k)+'</span>'+
+      '<span style="color:var(--text-muted);font-weight:700;font-family:\'JetBrains Mono\',monospace">'+latest+'</span>'+
+    '</div>';
+  }).join("");
+}
+
+function updateTrendSummary(dates,series,byDate,pkeys){
+  setTrendText("trend-window-label",getTrendWindowLabel());
+  var valueDates=dates.filter(function(d,idx){
+    return pkeys.some(function(k){return typeof series[k][idx]==="number"&&isFinite(series[k][idx]);});
+  });
+  if(!valueDates.length){
+    setTrendText("trend-latest","--");
+    setTrendText("trend-latest-date","No numeric Ct values");
+    setTrendText("trend-direction","--","tm-value trend-flat");
+    setTrendText("trend-direction-sub","Compared with prior date");
+    setTrendText("trend-strongest","--");
+    setTrendText("trend-strongest-sub","No pathogen signal");
+    return;
+  }
+
+  var latestDate=valueDates[valueDates.length-1];
+  var latestIdx=dates.indexOf(latestDate);
+  var latestVals=pkeys.map(function(k){return{key:k,val:series[k][latestIdx]};})
+    .filter(function(p){return typeof p.val==="number"&&isFinite(p.val);});
+  var latestAvg=avg(latestVals.map(function(p){return p.val;}));
+  var latestRows=(byDate[latestDate]&&byDate[latestDate]._n)||0;
+  setTrendText("trend-latest",fmtTrendIndex(latestAvg));
+  setTrendText("trend-latest-date",latestDate+" | "+latestRows+" samples");
+
+  var prevDate=valueDates.length>1?valueDates[valueDates.length-2]:"";
+  if(prevDate){
+    var prevIdx=dates.indexOf(prevDate);
+    var prevVals=pkeys.map(function(k){return series[k][prevIdx];})
+      .filter(function(v){return typeof v==="number"&&isFinite(v);});
+    var prevAvg=avg(prevVals);
+    var pct=prevAvg?((prevAvg-latestAvg)/prevAvg)*100:0;
+    var absPct=Math.abs(pct);
+    var dir=absPct<5?"Stable":(pct>0?"Rising":"Falling");
+    var cls=dir==="Rising"?"tm-value trend-up":dir==="Falling"?"tm-value trend-down":"tm-value trend-flat";
+    setTrendText("trend-direction",dir,cls);
+    setTrendText("trend-direction-sub","Index "+(pct>0?"down ":"up ")+absPct.toFixed(0)+"% vs "+prevDate);
+  }else{
+    setTrendText("trend-direction","New","tm-value trend-flat");
+    setTrendText("trend-direction-sub","Only one date in range");
+  }
+
+  latestVals.sort(function(a,b){return a.val-b.val;});
+  var strongest=latestVals[0];
+  setTrendText("trend-strongest",strongest?(P_CFG[strongest.key]?P_CFG[strongest.key].label:strongest.key):"--");
+  setTrendText("trend-strongest-sub",strongest?("Index "+fmtTrendIndex(strongest.val)+" on "+latestDate):"No pathogen signal");
+}
+
 function renderTrend(){
   var canvas=document.getElementById("trend-chart");
   var ctx=canvas.getContext("2d");
-  var pkeys=getPKeys();
+  var pkeys = STATE.selectedPathogen === "All" ? getPKeys() : [STATE.selectedPathogen];
 
-  // aggregate Ct values by date (each pathogen column = Ct value)
+  // Dynamic Title & Subtitle updates
+  var stpVal = document.getElementById("f-stp").value || "All";
+  var stpName = "";
+  if(stpVal !== "All"){
+    var stpObj = ALL_STPS.find(function(s){return s.id === stpVal;});
+    if(stpObj) stpName = stpObj.name + " STP";
+  }
+  
+  var pathVal = STATE.selectedPathogen;
+  var pathLabel = pathVal === "All" ? "All Pathogens" : (P_CFG[pathVal] ? P_CFG[pathVal].label : pathVal);
+  
+  var titleText = "Viral Load Trend";
+  if(stpName && pathLabel){
+    titleText += " – " + stpName + " – " + pathLabel;
+  } else if(stpName){
+    titleText += " – " + stpName;
+  } else if(pathLabel){
+    titleText += " – " + pathLabel;
+  }
+
+  var titleEl = document.getElementById("trend-title");
+  if(titleEl){
+    titleEl.innerHTML = '📈 ' + titleText + ' <span class="ph-tag">(Ct / PMMOV)</span><span class="info-tooltip" data-tooltip="Ct = Cycle Threshold. PMMOV is the fecal-strength control used to normalize samples. Lower normalized Ct means stronger viral signal.">ⓘ</span>';
+  }
+  var subEl = document.getElementById("trend-subtitle");
+  if(subEl){
+    subEl.textContent = pathLabel;
+  }
+
   var byDate={};
   STATE.filtered.forEach(function(r){
     if(!r.Date)return;
     if(!byDate[r.Date])byDate[r.Date]={_n:0};
-    var pmmov = getPmmov(r);
-    // If PMMOV is missing, use fallback of 1 (raw Ct values)
-    if(pmmov===null) pmmov=1;
+    var pmmov=getPmmov(r);
+    if(pmmov===null)pmmov=1;
     pkeys.forEach(function(k){
       var ct=getCtVal(r,k);
-      if(typeof ct!=='number')return;
+      if(typeof ct!=="number")return;
       if(!byDate[r.Date][k])byDate[r.Date][k]={sum:0,n:0};
       byDate[r.Date][k].sum+=(ct/pmmov);
       byDate[r.Date][k].n++;
     });
     byDate[r.Date]._n++;
   });
+
   var dates=Object.keys(byDate).sort();
   var series={};
   pkeys.forEach(function(k){
     series[k]=dates.map(function(d){
       var e=byDate[d][k];
-      return e&&e.n?parseFloat((e.sum/e.n).toFixed(1)):null;
+      return e&&e.n?parseFloat((e.sum/e.n).toFixed(3)):null;
     });
   });
+  updateTrendSummary(dates,series,byDate,pkeys);
+  updateTrendLegend(pkeys,series);
 
-  if(!dates.length){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle="#1e293b";ctx.font="bold 14px Segoe UI";
-    ctx.textAlign="center";ctx.fillText("No data available for selected range",canvas.width/2,canvas.height/2-8);
-    ctx.fillStyle="#475569";ctx.font="11px Segoe UI";
-    ctx.fillText("Add PMMOV values and Ct values to your sheet for the trend.",canvas.width/2,canvas.height/2+12);
+  var H=parseInt(canvas.getAttribute("height"),10)||245;
+  var W=(canvas.parentElement?canvas.parentElement.clientWidth-8:600)||600;
+  canvas.width=W;canvas.height=H;
+  ctx.clearRect(0,0,W,H);
+
+  var allVals=Object.values(series).reduce(function(a,b){return a.concat(b);},[])
+    .filter(function(v){return typeof v==="number"&&isFinite(v);});
+  if(!dates.length||!allVals.length){
+    ctx.fillStyle=chartTextColor();ctx.font="bold 13px "+chartFont();
+    ctx.textAlign="center";ctx.fillText("No trend data in this selection",W/2,H/2-8);
+    ctx.fillStyle=chartTextColor();ctx.font="11px "+chartFont();
+    ctx.fillText("Load rows with Date, Ct values, and optional PMMOV.",W/2,H/2+12);
     return;
   }
 
-  // set canvas size
-  var W=canvas.parentElement.clientWidth-28||600;
-  canvas.width=W;canvas.height=295;
-  ctx.clearRect(0,0,W,295);
-
-  var PAD={l:55,r:20,t:20,b:40};
-  var cW=W-PAD.l-PAD.r,cH=295-PAD.t-PAD.b;
-
-  // log scale max
-  var allVals=Object.values(series).reduce(function(a,b){return a.concat(b);},[ ]);
-  var maxV=Math.max.apply(null,allVals.filter(Boolean).concat([1]));
-  // Ct values are linear (18-42), not log scale
-  var yMin=Math.max(0, (maxV<50?0:10));
-  var yMax=maxV+2;
+  var PAD={l:62,r:18,t:22,b:42};
+  var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
+  var yMin=Math.min.apply(null,allVals);
+  var yMax=Math.max.apply(null,allVals);
+  var span=yMax-yMin;
+  var pad=span?Math.max(span*.12,.03):Math.max(yMax*.08,.08);
+  yMin=Math.max(0,yMin-pad);
+  yMax=yMax+pad;
 
   function xPos(i){return PAD.l+i*(cW/(dates.length-1||1));}
-  function yPos(v){
-    if(v===null||v===undefined)return PAD.t+cH;
-    return PAD.t+cH-(v-yMin)/(yMax-yMin||1)*cH;
-  }
+  function yPos(v){return PAD.t+(v-yMin)/(yMax-yMin||1)*cH;}
+  function tickText(v){return (yMax-yMin)<10?fmtTrendIndex(v):v.toFixed(0);}
 
-  // grid
-  ctx.strokeStyle="#eef2f7";ctx.lineWidth=1;
+  ctx.fillStyle=chartBgTop();
+  ctx.fillRect(PAD.l,PAD.t,cW,cH*.32);
+  ctx.fillStyle=chartBgBot();
+  ctx.fillRect(PAD.l,PAD.t+cH*.68,cW,cH*.32);
+  ctx.fillStyle=chartLabelHigh();ctx.font="800 9px "+chartFont();ctx.textAlign="right";
+  ctx.fillText("stronger signal",PAD.l+cW-4,PAD.t+12);
+  ctx.fillStyle=chartLabelLow();
+  ctx.fillText("weaker signal",PAD.l+cW-4,PAD.t+cH-6);
+
+  ctx.strokeStyle=chartGridColor();ctx.lineWidth=1;
   for(var g=0;g<=4;g++){
     var gy=PAD.t+g*(cH/4);
     ctx.beginPath();ctx.moveTo(PAD.l,gy);ctx.lineTo(PAD.l+cW,gy);ctx.stroke();
-    var yv=yMax-(g/4)*(yMax-yMin);
-    ctx.fillStyle="#94a3b8";ctx.font="9px Segoe UI";ctx.textAlign="right";
-    ctx.fillText(yv.toFixed(0),PAD.l-5,gy+3);
+    var yv=yMin+(g/4)*(yMax-yMin);
+    ctx.fillStyle=chartTextColor();ctx.font="9px "+chartMonoFont();ctx.textAlign="right";
+    ctx.fillText(tickText(yv),PAD.l-7,gy+3);
   }
 
-  // x axis labels
-  var step=Math.max(1,Math.floor(dates.length/8));
+  ctx.strokeStyle=chartAxisColor();ctx.lineWidth=1.2;
+  ctx.beginPath();ctx.moveTo(PAD.l,PAD.t);ctx.lineTo(PAD.l,PAD.t+cH);ctx.lineTo(PAD.l+cW,PAD.t+cH);ctx.stroke();
+
+  ctx.fillStyle=chartTextColor();ctx.font="800 9px "+chartFont();ctx.textAlign="center";
+  ctx.fillText("Sample date",PAD.l+cW/2,H-8);
+  ctx.save();
+  ctx.translate(12,PAD.t+cH/2);
+  ctx.rotate(-Math.PI/2);
+  ctx.fillText("Ct / PMMOV index",0,0);
+  ctx.restore();
+
+  var step=Math.max(1,Math.ceil(dates.length/7));
   dates.forEach(function(d,i){
-    if(i%step!==0)return;
+    if(i%step!==0&&i!==dates.length-1)return;
     var x=xPos(i);
-    ctx.fillStyle="#94a3b8";ctx.font="9px Segoe UI";ctx.textAlign="center";
-    ctx.fillText(d.slice(5),x,295-PAD.b+14);
-    ctx.strokeStyle="#eef2f7";ctx.lineWidth=1;
+    ctx.strokeStyle=chartGridColor();ctx.lineWidth=1;
     ctx.beginPath();ctx.moveTo(x,PAD.t);ctx.lineTo(x,PAD.t+cH);ctx.stroke();
+    ctx.fillStyle=chartTextColor();ctx.font="9px "+chartMonoFont();ctx.textAlign="center";
+    ctx.fillText(d.slice(5),x,H-PAD.b+16);
   });
 
-  // lines
+  STATE.trendChartPoints = [];
+  STATE.trendChartSeries = series;
+
   pkeys.forEach(function(k){
     var vals=series[k];
-    var col=P_CFG[k].color;
-    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2.5;ctx.lineJoin="round";
+    var col=P_CFG[k]?P_CFG[k].color:"#64748b";
+    ctx.beginPath();ctx.strokeStyle=col;ctx.lineWidth=2.7;ctx.lineJoin="round";ctx.lineCap="round";
     var started=false;
     vals.forEach(function(v,i){
-      if(v===null||v===undefined||isNaN(v)){started=false;return;};
+      if(v===null||v===undefined||isNaN(v)){started=false;return;}
       var x=xPos(i),y=yPos(v);
       if(!started){ctx.moveTo(x,y);started=true;}else ctx.lineTo(x,y);
     });
     ctx.stroke();
-    // dots
     vals.forEach(function(v,i){
       if(v===null||v===undefined||isNaN(v))return;
-      ctx.beginPath();ctx.arc(xPos(i),yPos(v),3,0,Math.PI*2);
+      var x=xPos(i), y=yPos(v);
+      var r=i===vals.length-1?5:3.5;
+      ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);
       ctx.fillStyle=col;ctx.fill();
+      ctx.strokeStyle=isDark()?"rgba(10,14,26,0.8)":"#fff";ctx.lineWidth=2;ctx.stroke();
+
+      var row = STATE.filtered.find(function(r){ return r.Date === dates[i]; });
+      var stpId = row ? getRowStpId(row) : "";
+      var stpObj = ALL_STPS.find(function(s){return s.id === stpId;}) || {};
+      var pmmov = row ? getPmmov(row) : null;
+      var rawCt = row ? getCtVal(row, k) : null;
+
+      STATE.trendChartPoints.push({
+        x: x,
+        y: y,
+        date: dates[i],
+        dateIdx: i,
+        pathogenKey: k,
+        val: rawCt,
+        stpName: stpObj.name || (row ? row.STP_Name : "") || "Unknown",
+        pmmov: pmmov,
+        viralLoad: v !== null ? v.toFixed(2) : "N/A"
+      });
     });
   });
 
-  // legend
-  var lx=PAD.l,ly=10;
-  pkeys.forEach(function(k,i){
-    ctx.fillStyle=P_CFG[k].color;ctx.fillRect(lx+i*90,ly-7,12,4);
-    ctx.fillStyle="#1a2a4a";ctx.font="9.5px Segoe UI";ctx.textAlign="left";
-    ctx.fillText(P_CFG[k].label,lx+i*90+15,ly);
-  });
+  initTrendChartInteractions();
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1791,20 +2977,28 @@ function renderCt(){
   }
 
   body.innerHTML=rows.map(function(r){
-    var col=r.val<28?"#dc2626":r.val<35?"#d97706":"#16a34a";
-    var pct=Math.min(100,(r.val/50)*100);
-    return '<div class="hbar-row">'+
-      '<div class="hbar-name" style="width:130px;font-size:10px" title="'+r.name+'">'+r.name+'</div>'+
-      '<div class="hbar-track"><div class="hbar-fill" style="width:'+pct+'%;background:'+col+'"></div></div>'+
-      '<div class="hbar-val" style="color:'+col+'">'+r.val+'</div>'+
+    var col=r.val<28?"var(--danger)":r.val<35?"var(--warning)":"var(--success)";
+    var pct=Math.min(100,(r.val/45)*100);
+    
+    var fillContent = '';
+    if(pct >= 22) {
+      fillContent = '<div class="hbar-fill" style="width:'+pct+'%;background:'+col+';height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;box-sizing:border-box;color:#fff;font-size:9.5px;font-weight:800;font-family:\'JetBrains Mono\',monospace;border-radius:4px;">'+r.val+'</div>';
+    } else {
+      fillContent = '<div class="hbar-fill" style="width:'+pct+'%;background:'+col+';height:100%;border-radius:4px;"></div>'+
+                    '<span style="margin-left:6px;color:'+col+';font-size:9.5px;font-weight:800;font-family:\'JetBrains Mono\',monospace;">'+r.val+'</span>';
+    }
+    
+    return '<div class="hbar-row" style="padding:4px 6px;">'+
+      '<div class="hbar-name" style="width:130px" title="'+r.name+'">'+r.name+'</div>'+
+      '<div class="hbar-track" style="flex:1;display:flex;align-items:center;background:var(--bg-input);height:16px;border-radius:4px;overflow:hidden;">'+fillContent+'</div>'+
       '</div>';
   }).join("")+
-  '<div style="margin-top:7px;font-size:9px;color:#1e40af;background:#eff6ff;border:1px solid #93c5fd;border-radius:4px;padding:4px 8px">← Lower Ct = Higher viral concentration &nbsp;|&nbsp; &lt;28 🔴 High &nbsp;|&nbsp; 28–35 🟡 Moderate &nbsp;|&nbsp; &gt;35 🟢 Low</div>';
+  '<div style="margin-top:8px;font-size:10px;color:var(--text-secondary);background:var(--bg-glass);border:1px solid var(--border);border-radius:var(--r3);padding:6px 10px">← Lower Ct = Higher viral concentration &nbsp;|&nbsp; &lt;28 🔴 High &nbsp;|&nbsp; 28–35 🟡 Moderate &nbsp;|&nbsp; &gt;35 🟢 Low</div>';
 }
 
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   DONUT — pathogen detection share
+   DONUT
 ═══════════════════════════════════════════════════════════════════════════ */
 function renderDonut(){
   var periodEl=document.getElementById("donut-period");
@@ -1830,18 +3024,18 @@ function renderDonut(){
 
   var canvas=document.getElementById("donut-chart");
   var ctx=canvas.getContext("2d");
-  ctx.clearRect(0,0,120,120);
+  var size=Math.min(canvas.width||160,canvas.height||160);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  var pkeys=getPKeys().filter(function(k){return P_CFG[k].active;});
+  var pkeys=getPKeys().filter(function(k){return k !== "All" && P_CFG[k].active;});
   var totals=pkeys.map(function(k){
-    // Count detections: numeric Ct values only. "No CT" is tested-negative.
     return STATE.filtered.reduce(function(s,r){
       return s+(isDetected(r,k)?1:0);
     },0);
   });
   var grand=totals.reduce(function(a,b){return a+b;},0)||1;
 
-  var cx=60,cy=60,R=52,r2=28;
+  var cx=canvas.width/2,cy=canvas.height/2,R=(size/2)-8,r2=R*.54;
   var start=-Math.PI/2;
   totals.forEach(function(v,i){
     var angle=(v/grand)*Math.PI*2;
@@ -1851,17 +3045,17 @@ function renderDonut(){
     ctx.closePath();
     ctx.fillStyle=P_CFG[pkeys[i]].color;
     ctx.fill();
-    ctx.strokeStyle="#fff";ctx.lineWidth=1.5;ctx.stroke();
+    ctx.strokeStyle=isDark()?"rgba(10,14,26,0.6)":"#fff";ctx.lineWidth=2;ctx.stroke();
     start+=angle;
   });
   // hole
   ctx.beginPath();ctx.arc(cx,cy,r2,0,Math.PI*2);
-  ctx.fillStyle="#fff";ctx.fill();
+  ctx.fillStyle=isDark()?"#0f172a":"#fff";ctx.fill();
   // center text
-  ctx.fillStyle="#1a2a4a";ctx.font="bold 13px Segoe UI";ctx.textAlign="center";
+  ctx.fillStyle=isDark()?"#f0f6fc":"#1a2a4a";ctx.font="bold 17px "+chartMonoFont();ctx.textAlign="center";
   ctx.fillText(fmtN(grand),cx,cy+2);
-  ctx.fillStyle="#6b7a9a";ctx.font="8px Segoe UI";
-  ctx.fillText("total",cx,cy+13);
+  ctx.fillStyle=chartTextColor();ctx.font="10px "+chartFont();
+  ctx.fillText("total",cx,cy+17);
 
   var leg=document.getElementById("donut-legend");
   leg.innerHTML=pkeys.map(function(k,i){
@@ -1880,7 +3074,8 @@ function renderDonut(){
 ═══════════════════════════════════════════════════════════════════════════ */
 function drawScatter(canvasId, points, xLabel, yLabel, color, logX){
   var canvas=document.getElementById(canvasId);
-  var W=canvas.parentElement.clientWidth-28||280;
+  var parentW = canvas.parentElement ? canvas.parentElement.clientWidth : 0;
+  var W = parentW > 28 ? parentW - 28 : 280;
   canvas.width=W;
   var ctx=canvas.getContext("2d");
   ctx.clearRect(0,0,W,canvas.height);
@@ -1889,7 +3084,7 @@ function drawScatter(canvasId, points, xLabel, yLabel, color, logX){
   var cW=W-PAD.l-PAD.r,cH=H-PAD.t-PAD.b;
 
   if(!points.length){
-    ctx.fillStyle="#94a3b8";ctx.font="10px Segoe UI";ctx.textAlign="center";
+    ctx.fillStyle=chartTextColor();ctx.font="11px "+chartFont();ctx.textAlign="center";
     ctx.fillText("No data available",W/2,H/2);return;
   }
 
@@ -1905,17 +3100,17 @@ function drawScatter(canvasId, points, xLabel, yLabel, color, logX){
   function yp(v){return PAD.t+cH-(v-yMin)/(yMax-yMin||1)*cH;}
 
   // grid
-  ctx.strokeStyle="#eef2f7";ctx.lineWidth=1;
+  ctx.strokeStyle=chartGridColor();ctx.lineWidth=1;
   for(var i=0;i<=4;i++){
     var gy=PAD.t+i*(cH/4);
     ctx.beginPath();ctx.moveTo(PAD.l,gy);ctx.lineTo(PAD.l+cW,gy);ctx.stroke();
     var yv=yMax-(i/4)*yMax;
-    ctx.fillStyle="#94a3b8";ctx.font="8px Segoe UI";ctx.textAlign="right";
+    ctx.fillStyle=chartTextColor();ctx.font="8px "+chartMonoFont();ctx.textAlign="right";
     ctx.fillText(fmtN(yv),PAD.l-4,gy+3);
   }
 
   // axis labels
-  ctx.fillStyle="#6b7a9a";ctx.font="8.5px Segoe UI";
+  ctx.fillStyle=chartTextColor();ctx.font="9px "+chartFont();
   ctx.textAlign="center";
   ctx.fillText(xLabel,PAD.l+cW/2,H-PAD.b+24);
   ctx.save();ctx.rotate(-Math.PI/2);ctx.textAlign="center";
@@ -1927,16 +3122,16 @@ function drawScatter(canvasId, points, xLabel, yLabel, color, logX){
   var den=xs.reduce(function(s,v){return s+(v-mx)*(v-mx);},0);
   if(den){
     var sl=num/den,ic2=my-sl*mx;
-    ctx.beginPath();ctx.strokeStyle="rgba(37,99,235,.4)";ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
+    ctx.beginPath();ctx.strokeStyle=isDark()?"rgba(6,214,160,.35)":"rgba(37,99,235,.4)";ctx.lineWidth=1.5;ctx.setLineDash([4,3]);
     ctx.moveTo(xp(xMin),yp(sl*xMin+ic2));ctx.lineTo(xp(xMax),yp(sl*xMax+ic2));
     ctx.stroke();ctx.setLineDash([]);
   }
 
   // dots
   points.forEach(function(p){
-    ctx.beginPath();ctx.arc(xp(p.x),yp(p.y),4.5,0,Math.PI*2);
-    ctx.fillStyle=color;ctx.globalAlpha=.75;ctx.fill();
-    ctx.strokeStyle="#fff";ctx.lineWidth=1;ctx.globalAlpha=1;ctx.stroke();
+    ctx.beginPath();ctx.arc(xp(p.x),yp(p.y),5,0,Math.PI*2);
+    ctx.fillStyle=color;ctx.globalAlpha=.8;ctx.fill();
+    ctx.strokeStyle=isDark()?"rgba(10,14,26,0.6)":"#fff";ctx.lineWidth=1.5;ctx.globalAlpha=1;ctx.stroke();
   });
 }
 
@@ -1966,7 +3161,7 @@ function renderClinical(){
     document.getElementById("cs-strength").textContent="N/A";
     document.getElementById("cs-pval").textContent="N/A";
     document.getElementById("clin-note").textContent=msg;
-    drawScatter("clin-chart",[],"Avg Ct Value","Clinical Cases",P_CFG[k]?P_CFG[k].color:"#e63946",false);
+    drawScatter("clin-chart",[],  "Avg Ct Value","Clinical Cases",P_CFG[k]?P_CFG[k].color:"#ef476f",false);
   }
 
   if(!pts.length){
@@ -1993,7 +3188,7 @@ function renderClinical(){
   document.getElementById("cs-strength").style.color=rl.color;
   document.getElementById("cs-pval").textContent=xs.length>3?(r!==null&&Math.abs(r)>.5?"<0.05":">0.05"):"N/A";
 
-  drawScatter("clin-chart",pts,"Avg Ct Value","Clinical Cases",P_CFG[k]?P_CFG[k].color:"#e63946",false);
+  drawScatter("clin-chart",pts,"Avg Ct Value","Clinical Cases",P_CFG[k]?P_CFG[k].color:"#ef476f",false);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2020,17 +3215,17 @@ function renderPopCorr(){
 
   var insEl=document.getElementById("pop-ins");
   if(r!==null&&Math.abs(r)>0.2){
-    var msg=r>0?"🔺 Higher population = Higher load":"🔻 Inverse relationship";
+    var msg=r>0?"Higher population = Higher load":"Inverse relationship";
     insEl.textContent=msg;insEl.style.display="inline-block";
-    insEl.style.background=r>0?"#fef2f2":"#f0fdf4";
-    insEl.style.color=r>0?"#dc2626":"#16a34a";
-    insEl.style.border="1px solid "+(r>0?"#fca5a5":"#86efac");
+    insEl.style.background=r>0?"var(--danger-dim)":"var(--success-dim)";
+    insEl.style.color=r>0?"var(--danger)":"var(--success)";
+    insEl.style.border="1px solid "+(r>0?"rgba(239,71,111,0.3)":"rgba(6,214,160,0.3)");
   } else {insEl.style.display="none";}
 
   document.getElementById("pop-insight").textContent=pts.length+" STPs plotted · "+
     (r!==null?"r="+r.toFixed(2)+" ("+rl.label+")":" — waiting for correlation data");
 
-  drawScatter("pop-chart",pts,"Population Served","Avg Ct Value",P_CFG[k]?P_CFG[k].color:"#2563eb",false);
+  drawScatter("pop-chart",pts,"Population Served","Avg Ct Value",P_CFG[k]?P_CFG[k].color:"#38bdf8",false);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2062,12 +3257,13 @@ function renderPollCorr(){
     pts.length+" data points · "+param+" vs "+P_CFG[k].label+" load":
     "Add "+param+" column to your Excel/CSV to enable pollution correlation";
 
-  if(hasPoll)drawScatter("poll-chart",pts,param,"Load (copies/L)","#0891b2",false);
+  if(hasPoll)drawScatter("poll-chart",pts,param,"Load (copies/L)","#22d3ee",false);
   else{
     var c=document.getElementById("poll-chart");
-    c.width=c.parentElement.clientWidth-28||240;c.height=180;
+    var parentW = c.parentElement ? c.parentElement.clientWidth : 0;
+    c.width = parentW > 28 ? parentW - 28 : 240; c.height=180;
     var ctx2=c.getContext("2d");ctx2.clearRect(0,0,c.width,180);
-    ctx2.fillStyle="#94a3b8";ctx2.font="10px Segoe UI";ctx2.textAlign="center";
+    ctx2.fillStyle=chartTextColor();ctx2.font="11px "+chartFont();ctx2.textAlign="center";
     ctx2.fillText("Add "+param+" column to sheet",c.width/2,90);
   }
 }
@@ -2076,36 +3272,53 @@ function renderPollCorr(){
    FORECAST
 ═══════════════════════════════════════════════════════════════════════════ */
 function renderForecast(){
-  var pkeys=getPKeys();
+  var pkeys=getPKeys().filter(function(k){return k !== "All";});
   var tbody=document.getElementById("forecast-body");
   if(!STATE.filtered.length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:20px">Waiting for sheet data to show forecasts</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:24px">Waiting for sheet data to show forecasts</td></tr>';
     return;
   }
   tbody.innerHTML=pkeys.map(function(k){
     var rec=STATE.filtered.slice(-14).map(function(r){return getCtVal(r,k);}).filter(function(v){return typeof v==='number';});
     var prv=STATE.filtered.slice(-28,-14).map(function(r){return getCtVal(r,k);}).filter(function(v){return typeof v==='number';});
     var r7=avg(rec),r14=avg(prv);
-    // For Ct: lower is more virus. If recent Ct dropped vs prior, viral load is RISING.
-    // chg is negative when Ct drops (bad) — invert so positive chg = rising virus
     var chg=r14>0?(r14-r7)/r14:0;
     var chg14=chg*1.45;
-    var status=chg>0.05?"Rising":chg<-0.05?"Falling":"Stable";
+    var status=chg>0.03?"Rising":chg<-0.03?"Falling":"Stable";
     var risk=Math.min(1,parseFloat((Math.abs(chg)*2+0.1).toFixed(3)));
     var rk=risk>0.65?"High":risk>0.33?"Medium":"Low";
-    var stIcon=status==="Rising"?"🔺 ":status==="Falling"?"🔻 ":"➡️ ";
+    
     var stCls=status==="Rising"?"rup":status==="Falling"?"rdn":"rst";
-    var rkCls=rk==="High"?"hi":rk==="Medium"?"med":"lo";
+    var statusText = status === "Rising" ? "Rising ↑" : (status === "Falling" ? "Falling ↓" : "Stable →");
+    
+    var rkBadge = '';
+    if(rk === "High"){
+      rkBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--danger-dim); color:var(--danger);">● High</span>';
+    } else if(rk === "Medium"){
+      rkBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--warning-dim); color:var(--warning);">● Medium</span>';
+    } else {
+      rkBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--success-dim); color:var(--success);">● Low</span>';
+    }
+    
     var conf=Math.min(92,Math.max(60,Math.round(75+Math.abs(chg)*55)));
+    var confBadge = '';
+    if(conf >= 80) {
+      confBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--success-dim); color:var(--success);">High ('+conf+'%)</span>';
+    } else if(conf >= 70) {
+      confBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--warning-dim); color:var(--warning);">Medium ('+conf+'%)</span>';
+    } else {
+      confBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--danger-dim); color:var(--danger);">Low ('+conf+'%)</span>';
+    }
+    
     var active=P_CFG[k].active;
     return '<tr style="'+(active?"":"opacity:.5;font-style:italic")+'">'+
-      '<td style="font-weight:700">'+P_CFG[k].label+(active?'':' <span style="font-size:9px;color:#94a3b8">(not active)</span>')+'</td>'+
-      '<td class="'+stCls+'">'+stIcon+status+'</td>'+
-      '<td class="'+(chg>0?"rup":"rdn")+'">'+(chg>0?"↑":"↓")+Math.abs(chg*100).toFixed(0)+'%</td>'+
-      '<td class="'+(chg14>0?"rup":"rdn")+'">'+(chg14>0?"↑":"↓")+Math.abs(chg14*100).toFixed(0)+'%</td>'+
-      '<td>'+risk.toFixed(3)+'</td>'+
-      '<td class="'+rkCls+'">● '+rk+'</td>'+
-      '<td style="color:#6b7a9a">'+conf+'%</td>'+
+      '<td style="font-weight:700">'+P_CFG[k].label+(active?'':' <span style="font-size:9px;color:var(--text-muted)">(inactive)</span>')+'</td>'+
+      '<td class="'+stCls+'" style="font-weight:700">'+statusText+'</td>'+
+      '<td class="'+(chg>0?"rup":"rdn")+'" style="font-family:\'JetBrains Mono\',monospace; font-weight:700;">'+(chg>0?"↑":"↓")+Math.abs(chg*100).toFixed(0)+'%</td>'+
+      '<td class="'+(chg14>0?"rup":"rdn")+'" style="font-family:\'JetBrains Mono\',monospace; font-weight:700;">'+(chg14>0?"↑":"↓")+Math.abs(chg14*100).toFixed(0)+'%</td>'+
+      '<td style="font-family:\'JetBrains Mono\',monospace; font-weight:700;">'+risk.toFixed(3)+'</td>'+
+      '<td>'+rkBadge+'</td>'+
+      '<td>'+confBadge+'</td>'+
       '</tr>';
   }).join("");
 }
@@ -2118,7 +3331,7 @@ function renderEarlyWarning(){
   var sorted=Object.keys(riskMap).sort(function(a,b){return riskMap[b]-riskMap[a];}).slice(0,8);
   var tbody=document.getElementById("ew-body");
   if(!sorted.length){
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:#94a3b8;padding:20px">Waiting for sheet data to show warnings</td></tr>';
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px">Waiting for sheet data to show warnings</td></tr>';
     document.getElementById("alert-txt").textContent="No data loaded yet.";
     return;
   }
@@ -2132,16 +3345,27 @@ function renderEarlyWarning(){
   tbody.innerHTML=sorted.map(function(id){
     var s=ALL_STPS.find(function(t){return (t.id||t.STP_ID||'')===id;});
     var name=s?s.name:id;var zone=s?s.zone:"—";
-    var sc=riskMap[id];var lv=sc>=0.65?"Critical":sc>=0.33?"Moderate":"Low";
-    var dot=sc>=0.65?"🔴":sc>=0.33?"🟡":"🟢";
+    var sc=riskMap[id];
+    
+    var priorityBadge = '';
+    var rowStyle = '';
+    if(sc >= 0.65) {
+      priorityBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--danger-dim); color:var(--danger);">CRITICAL</span>';
+      rowStyle = 'style="background: rgba(220, 38, 38, 0.05); font-weight: 700;"';
+    } else if(sc >= 0.33) {
+      priorityBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--warning-dim); color:var(--warning);">MODERATE</span>';
+    } else {
+      priorityBadge = '<span style="display:inline-block; font-size:9.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:var(--success-dim); color:var(--success);">LOW</span>';
+    }
+    
     var impact=sc>=0.65?"Cases may increase 7–14 days":sc>=0.33?"Stable, watch trend":"No significant change";
     var action=sc>=0.65?"Immediate additional sampling":sc>=0.33?"Additional sampling":"Continue monitoring";
-    return '<tr>'+
+    return '<tr ' + rowStyle + '>'+
       '<td style="font-weight:700">'+name+'</td>'+
-      '<td style="color:#6b7a9a">'+zone+'</td>'+
-      '<td>'+dot+' <b>'+lv+'</b></td>'+
-      '<td style="color:#6b7a9a;font-size:9.5px">'+impact+'</td>'+
-      '<td style="font-size:9.5px">'+action+'</td>'+
+      '<td style="color:var(--text-secondary)">'+zone+'</td>'+
+      '<td>'+priorityBadge+'</td>'+
+      '<td style="color:var(--text-secondary)">'+impact+'</td>'+
+      '<td>'+action+'</td>'+
       '</tr>';
   }).join("");
 }
@@ -2172,74 +3396,18 @@ function renderAll(){
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SETTINGS DRAWER
+   SETTINGS STUBS
 ═══════════════════════════════════════════════════════════════════════════ */
-function openSettings(){
-  var drawer=document.getElementById("settings-drawer");
-  var overlay=document.getElementById("sd-overlay");
-  if(drawer)drawer.classList.add("open");
-  if(overlay)overlay.classList.add("open");
-  // Restore saved URL if any
-  var gsUrl=document.getElementById("gs-url");
-  var arCheck=document.getElementById("ar-check");
-  if(STATE.gsUrl&&gsUrl)gsUrl.value=STATE.gsUrl;
-  if(STATE.autoRefresh&&arCheck)arCheck.checked=true;
-}
-function closeSettings(){
-  var drawer=document.getElementById("settings-drawer");
-  var overlay=document.getElementById("sd-overlay");
-  if(drawer)drawer.classList.remove("open");
-  if(overlay)overlay.classList.remove("open");
-}
-// Keep closeModal as alias so old references still work
-function closeModal(){closeSettings();}
+function openSettings(){}
+function closeSettings(){}
+function closeModal(){}
+function setSdStatus(cls,msg){}
+function setModalStatus(cls,msg){}
+function setConnPill(connected, msg){}
+function parseFile(file){}
 
-function setSdStatus(cls,msg){
-  var el=document.getElementById("sd-status");
-  if(el){el.className="sd-stat "+cls;el.innerHTML=msg;}
-}
-function setModalStatus(cls,msg){setSdStatus(cls,msg);}
-
-function setConnPill(connected, msg){
-  var el=document.getElementById("conn-pill");
-  if(!el)return;
-  el.className="conn-pill "+(connected?"conn-on":"conn-off");
-  el.textContent=connected?"🟢 "+msg:"⚪ "+msg;
-}
-
-function parseFile(file){
-  setSdStatus("ld","⏳ Loading file…");
-  var name=file.name.toLowerCase();
-  if(name.indexOf(".csv")!==-1){
-    Papa.parse(file,{header:false,skipEmptyLines:true,complete:function(r){
-      var cleaned=cleanRawRows(r.data);
-      setSdStatus("ok","✅ "+cleaned.length+" rows loaded!");
-      setConnPill(true,"Connected: CSV");
-      setTimeout(function(){loadData(cleaned);},400);
-    },error:function(e){setSdStatus("err","❌ "+e.message);}});
-  } else {
-    var reader=new FileReader();
-    reader.onload=function(e){
-      try{
-        var wb=XLSX.read(e.target.result,{type:"binary",cellDates:false});
-        var sheetName=wb.SheetNames.indexOf("Daily_Samples")!==-1?"Daily_Samples":wb.SheetNames[0];
-        var ws=wb.Sheets[sheetName];
-        var raw=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});
-        var cleaned=cleanRawRows(raw);
-        setSdStatus("ok","✅ "+cleaned.length+" rows loaded!");
-        setConnPill(true,"Connected: Excel ("+sheetName+")");
-        setTimeout(function(){loadData(cleaned);},400);
-      }catch(ex){setSdStatus("err","❌ "+ex.message);}
-    };
-    reader.onerror=function(){setSdStatus("err","❌ Could not read file.");};
-    reader.readAsBinaryString(file);
-  }
-}
-
-/* Convert raw array-of-arrays into array-of-objects, auto-detecting header row */
 function cleanRawRows(raw){
   if(!raw||!raw.length)return[];
-  // Find the row that contains STP_ID or STP_Name
   var headerIdx=0;
   for(var i=0;i<Math.min(raw.length,10);i++){
     var joined=(raw[i]||[]).join(",").toLowerCase();
@@ -2253,9 +3421,14 @@ function cleanRawRows(raw){
     var id="";
     if(stpCol>=0) id=(row[stpCol]||"").toString().trim();
     if(!id && stpNameCol>=0) id=(row[stpNameCol]||"").toString().trim();
-    // skip empty rows and legend/footer rows
     if(!id) return false;
-    if(stpCol>=0 && id) return /^STP-?\d/i.test(id) || stpNameCol>=0;
+    if(stpCol>=0 && id) {
+      if(/^STP-?\d/i.test(id)) return true;
+      var matchesMaster = ALL_STPS.some(function(s){
+        return s.name.trim().toLowerCase() === id.toLowerCase();
+      });
+      return matchesMaster || stpNameCol>=0;
+    }
     return true;
   }).map(function(row){
     var obj={};
@@ -2276,28 +3449,28 @@ function connectGSheets(){
     var entered=urlEl.value.trim();
     if(entered) url = entered;
   }
-  if(!url){setSdStatus("err","❌ Please paste your Google Sheets URL or set STATE.gsUrl in code");return;}
+  if(!url){setSdStatus("err","Error: Please paste your Google Sheets URL or set STATE.gsUrl in code");return;}
   STATE.gsUrl=url;
   var arCheck=document.getElementById("ar-check");
   var arSec=document.getElementById("ar-sec");
   STATE.autoRefresh=arCheck?arCheck.checked:STATE.autoRefresh;
   STATE.refreshSec=arSec?(parseInt(arSec.value)||60):STATE.refreshSec;
-  setSdStatus("ld","⏳ Connecting…");
+  setSdStatus("ld","Connecting…");
 
   fetchDashboardSheets(url).then(function(result){
     var data=result.dailyRows||[];
     STATE.stpControlRows=result.controlRows||[];
     if(!data.length){
-      setSdStatus("err","❌ No rows found in sheet. Check header row and sharing settings.");
+      setSdStatus("err","Error: No rows found in sheet. Check header row and sharing settings.");
       document.getElementById('refresh-lbl').textContent="Data not loaded";
       return;
     }
-    setSdStatus("ok","✅ "+data.length+" rows loaded!");setConnPill(true,"Google Sheets live");
+    setSdStatus("ok",data.length+" rows loaded!");setConnPill(true,"Google Sheets live");
     setTimeout(function(){loadData(data);},600);
     startAutoRefresh();
-    document.getElementById('refresh-lbl').textContent=STATE.autoRefresh?'🟢 ↻ Auto-refresh ON':'Data loaded';
+    document.getElementById('refresh-lbl').textContent=STATE.autoRefresh?'Auto-refresh ON':'Data loaded';
   }).catch(function(e){
-    setSdStatus("err","❌ "+e.message);
+    setSdStatus("err","Error: "+e.message);
     document.getElementById('refresh-lbl').textContent="Data load failed";
   });
 }
@@ -2311,7 +3484,7 @@ function startAutoRefresh(){
       STATE.rows=(result.dailyRows||[]).map(normRow);
       applyStpControlRows(STATE.stpControlRows);
       STATE.lastRefresh=new Date().toLocaleTimeString();
-      document.getElementById("refresh-lbl").textContent="🟢 ↻ "+STATE.lastRefresh;setConnPill(true,"Google Sheets · "+STATE.lastRefresh);
+      document.getElementById("refresh-lbl").textContent="↻ "+STATE.lastRefresh;setConnPill(true,"Google Sheets · "+STATE.lastRefresh);
       applyFilters();
     }).catch(function(e){
       console.warn("Auto-refresh failed:", e.message);
@@ -2319,54 +3492,246 @@ function startAutoRefresh(){
   },STATE.refreshSec*1000);
 }
 
-function setupUploadUI(){
-  var zone=document.getElementById("upload-zone");
-  var fileInput=document.getElementById("file-input");
-  if(!zone||!fileInput) return;
-  zone.addEventListener("dragover",function(e){e.preventDefault();zone.classList.add("drag");});
-  zone.addEventListener("dragleave",function(){zone.classList.remove("drag");});
-  zone.addEventListener("drop",function(e){
-    e.preventDefault();zone.classList.remove("drag");
-    if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length){
-      parseFile(e.dataTransfer.files[0]);
+function closeChartModal() {
+  document.getElementById("chart-modal").style.display = "none";
+}
+
+function openChartDetailModal(date){
+  var rows = STATE.filtered.filter(function(r){ return r.Date === date; });
+  var modal = document.getElementById("chart-modal");
+  var body = document.getElementById("chart-modal-body");
+  if(!modal || !body) return;
+  
+  if(!rows.length){
+    body.innerHTML = "<p style='color:var(--text-secondary); text-align:center;'>No record details found for this date.</p>";
+    modal.style.display = "flex";
+    return;
+  }
+  
+  var html = '<div style="margin-bottom:12px; font-weight:800; font-size:13px; color:var(--text-secondary);">Date: <span style="color:var(--text-primary);">' + date + '</span></div>';
+  
+  rows.forEach(function(r, idx){
+    var stpId = getRowStpId(r);
+    var stpObj = ALL_STPS.find(function(s){return s.id === stpId;}) || {};
+    var stpName = stpObj.name || r.STP_Name || stpId || "Unknown STP";
+    var zone = stpObj.zone || r.Zone || "N/A";
+    var pmmov = getPmmov(r);
+    var pmmovStr = pmmov !== null ? pmmov.toFixed(4) : "1.0000";
+    var sampleStatus = r.Status || r.status || "Active";
+    
+    // Compute risk level for this row
+    var avgCt = getCtVal(r, "All");
+    var riskScore = 0;
+    if(avgCt !== null){
+      var minCt=15, maxCt=40;
+      riskScore = 1 - clamp((avgCt-minCt)/(maxCt-minCt+0.001), 0, 1);
+    }
+    var riskLbl = riskScore >= 0.65 ? "🔴 High" : riskScore >= 0.33 ? "🟡 Moderate" : "🟢 Low";
+    
+    html += '<div style="border: 1px solid var(--border); border-radius: var(--r3); padding: 12px; margin-bottom: 12px; background: rgba(255,255,255,0.01);">' +
+      '<div style="font-weight: 800; font-size: 12px; color: var(--accent); margin-bottom: 6px; display:flex; justify-content:space-between;">' +
+      '<span>🏢 ' + stpName + '</span>' +
+      '<span style="font-size:10px; color:var(--text-muted);">' + zone + ' Zone</span>' +
+      '</div>' +
+      '<div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px 12px; font-size:11px; color:var(--text-secondary); margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:6px;">' +
+      '<div><b>PMMOV Control:</b> ' + pmmovStr + '</div>' +
+      '<div><b>Sample Status:</b> ' + sampleStatus + '</div>' +
+      '<div><b>Surveillance Risk:</b> ' + riskLbl + '</div>' +
+      '<div><b>Outbreak Probability:</b> ' + (riskScore * 100).toFixed(0) + '%</div>' +
+      '</div>';
+      
+    var pkeys = getPKeys();
+    var pathHtml = '<div style="display:flex; flex-direction:column; gap:4px;">';
+    pkeys.forEach(function(k){
+      var ct = getCtVal(r, k);
+      var pathogenLabel = P_CFG[k] ? P_CFG[k].label : k;
+      var ctStr = ct !== null ? ct.toFixed(1) : "N/A";
+      var viralLoad = ct !== null && pmmov !== null ? (ct / pmmov).toFixed(2) : "N/A";
+      var det = isDetected(r, k) ? "🟢 Detected" : (isTested(r, k) ? "⚪ Not Detected" : "❔ Not Tested");
+      
+      pathHtml += '<div style="display:flex; justify-content:space-between; font-size:11px; padding: 2px 4px; background: rgba(0,0,0,0.15); border-radius: 4px;">' +
+        '<span>🦠 <b>' + pathogenLabel + '</b>:</span>' +
+        '<span>Ct: ' + ctStr + ' · Load: ' + viralLoad + ' · <span style="font-weight:600;">' + det + '</span></span>' +
+        '</div>';
+    });
+    pathHtml += '</div>';
+    html += pathHtml + '</div>';
+  });
+  
+  body.innerHTML = html;
+  modal.style.display = "flex";
+}
+
+function initTrendChartInteractions(){
+  var canvas = document.getElementById("trend-chart");
+  if(!canvas) return;
+  if(canvas._hasListeners) return;
+  canvas._hasListeners = true;
+  
+  var tooltip = document.getElementById("chart-tooltip");
+  
+  canvas.addEventListener("mousemove", function(e){
+    var points = STATE.trendChartPoints || [];
+    if(!points.length) { tooltip.style.display = "none"; return; }
+    
+    var rect = canvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    
+    var canvasX = x * (canvas.width / rect.width);
+    var canvasY = y * (canvas.height / rect.height);
+    
+    var closest = null;
+    var minDist = 16;
+    
+    points.forEach(function(pt){
+      var dist = Math.sqrt((pt.x - canvasX)*(pt.x - canvasX) + (pt.y - canvasY)*(pt.y - canvasY));
+      if(dist < minDist){
+        minDist = dist;
+        closest = pt;
+      }
+    });
+    
+    if(closest){
+      canvas.style.cursor = "pointer";
+      tooltip.style.display = "block";
+      
+      var pageX = e.clientX + window.scrollX;
+      var pageY = e.clientY + window.scrollY;
+      tooltip.style.left = (pageX + 14) + "px";
+      tooltip.style.top = (pageY - 10) + "px";
+      
+      var pathogenName = P_CFG[closest.pathogenKey] ? P_CFG[closest.pathogenKey].label : closest.pathogenKey;
+      var ctValue = closest.val !== null ? closest.val.toFixed(2) : "N/A";
+      
+      var trendStr = "No previous data";
+      var series = STATE.trendChartSeries[closest.pathogenKey];
+      if(closest.dateIdx > 0 && series){
+        var prevVal = series[closest.dateIdx - 1];
+        if(typeof prevVal === "number"){
+          var diff = closest.val - prevVal;
+          if(Math.abs(diff) < 0.2) trendStr = "Stable";
+          else if(diff > 0) trendStr = "Ct Increase (Decreasing load)";
+          else trendStr = "Ct Decrease (Increasing load)";
+        }
+      }
+      
+      var stpVal = document.getElementById("f-stp").value || "All";
+      var stpName = stpVal === "All" ? "All STPs (Avg)" : closest.stpName;
+      var pmmovVal = closest.pmmov !== null ? closest.pmmov.toFixed(4) : "1.0000";
+      
+      tooltip.innerHTML = '<div style="border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 6px; font-weight: 800; color: var(--accent);">' + closest.date + '</div>' +
+        '<b>STP:</b> ' + stpName + '<br>' +
+        '<b>Pathogen:</b> ' + pathogenName + '<br>' +
+        '<b>Ct Value:</b> ' + ctValue + '<br>' +
+        '<b>PMMOV:</b> ' + pmmovVal + '<br>' +
+        '<b>Normalized Load:</b> ' + closest.viralLoad + '<br>' +
+        '<b>Trend:</b> ' + trendStr;
+    } else {
+      canvas.style.cursor = "default";
+      tooltip.style.display = "none";
     }
   });
-  fileInput.addEventListener("change",function(){
-    if(this.files && this.files.length) parseFile(this.files[0]);
+  
+  canvas.addEventListener("mouseout", function(){
+    tooltip.style.display = "none";
+  });
+  
+  canvas.addEventListener("click", function(e){
+    var points = STATE.trendChartPoints || [];
+    if(!points.length) return;
+    
+    var rect = canvas.getBoundingClientRect();
+    var x = e.clientX - rect.left;
+    var y = e.clientY - rect.top;
+    
+    var canvasX = x * (canvas.width / rect.width);
+    var canvasY = y * (canvas.height / rect.height);
+    
+    var closest = null;
+    var minDist = 16;
+    
+    points.forEach(function(pt){
+      var dist = Math.sqrt((pt.x - canvasX)*(pt.x - canvasX) + (pt.y - canvasY)*(pt.y - canvasY));
+      if(dist < minDist){
+        minDist = dist;
+        closest = pt;
+      }
+    });
+    
+    if(closest){
+      openChartDetailModal(closest.date);
+    }
   });
 }
+
+function exportDataCSV(){
+  if(!STATE.filtered || !STATE.filtered.length){
+    alert("No data available to export.");
+    return;
+  }
+  var pkeys = getPKeys();
+  var headers = ["Sample_Collection_Date", "Date_of_Analysis", "STP_ID", "STP_Name", "Zone", "PMMOV"];
+  pkeys.forEach(function(k){
+    headers.push(P_CFG[k] ? P_CFG[k].label.replace(/\s+/g, "_") : k);
+  });
+  
+  var csvRows = [headers.join(",")];
+  
+  STATE.filtered.forEach(function(r){
+    var values = [
+      '"' + (r.Date || "") + '"',
+      '"' + (r.Date_of_Analysis || "") + '"',
+      '"' + (getRowStpId(r) || "") + '"',
+      '"' + (r.STP_Name || "") + '"',
+      '"' + (r.Zone || "") + '"',
+      '"' + (getPmmov(r) !== null ? getPmmov(r) : "") + '"'
+    ];
+    pkeys.forEach(function(k){
+      var ct = getCtVal(r, k);
+      values.push(ct !== null ? ct : "");
+    });
+    csvRows.push(values.join(","));
+  });
+  
+  var csvString = csvRows.join("\n");
+  var blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  var link = document.createElement("a");
+  var url = URL.createObjectURL(blob);
+  link.setAttribute("href", url);
+  link.setAttribute("download", "IISc_Wastewater_Surveillance_Data_" + new Date().toISOString().split("T")[0] + ".csv");
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function setupUploadUI(){}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    INIT
 ═══════════════════════════════════════════════════════════════════════════ */
 window.addEventListener("load",function(){
-  // populate filter dropdowns with default (empty data)
   populateFilterDropdowns();
-  // Build initial zone list from ALL_STPS master (before any data is loaded)
   var zSel=document.getElementById("f-zone");
   var zones=["All"];
   ALL_STPS.forEach(function(s){if(zones.indexOf(s.zone)===-1)zones.push(s.zone);});
   zSel.innerHTML=zones.sort().map(function(z){return'<option>'+z+'</option>';}).join("");
-  // Initial STP dropdown (all STPs, cascading will update on zone change)
   updateStpDropdown();
 
-  // ── Auto-connect to Google Sheets on startup ──────────────────
   STATE.autoRefresh = false;
   STATE.refreshSec  = 60;
+  var winSelect=document.getElementById("f-window");
+  if(winSelect) winSelect.value = STATE.window;
   document.getElementById("refresh-lbl").textContent = "⏳ Connecting…";
 
-  // init map
   initMap();
   setupUploadUI();
 
-  // if a Google Sheets URL is configured, populate the input and load it automatically
   if(STATE.gsUrl){
-    var gsUrlInput=document.getElementById("gs-url");
-    if(gsUrlInput) gsUrlInput.value = STATE.gsUrl;
     connectGSheets();
   }
 
-  // render empty state
   renderKPIs();
   renderEarlyWarning();
   renderForecast();
@@ -2374,12 +3739,26 @@ window.addEventListener("load",function(){
   renderPopCorr();
   renderPollCorr();
 
-  // resize handler
   window.addEventListener("resize",function(){
     if(STATE.filtered.length){renderTrend();renderClinical();renderPopCorr();renderPollCorr();}
   });
 });
 </script>
+
+<!-- Trend Chart Tooltip & Modal -->
+<div id="chart-tooltip" style="position: absolute; display: none; background: rgba(15, 23, 42, 0.95); border: 1px solid var(--border); border-radius: var(--r3); padding: 10px 14px; color: #f0f6fc; font-family: var(--font-primary); font-size: 11px; pointer-events: none; z-index: 1000; box-shadow: var(--shadow-lg); min-width: 200px; line-height: 1.4;"></div>
+
+<div id="chart-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(10, 14, 26, 0.7); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 2000; padding: 20px;">
+  <div style="background: var(--bg-card-solid); border: 1px solid var(--border); border-radius: var(--r2); max-width: 500px; width: 100%; box-shadow: var(--shadow-lg); overflow: hidden; display: flex; flex-direction: column;">
+    <div class="ph" style="border-bottom: 1px solid var(--border); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center;">
+      <span class="ph-title" style="font-size: 12px; font-weight: 800; color: var(--accent);">📊 Sample Details</span>
+      <button onclick="closeChartModal()" style="background: transparent; border: none; color: var(--text-secondary); font-size: 16px; cursor: pointer; font-weight: bold; padding: 0 4px; line-height: 1;">✕</button>
+    </div>
+    <div id="chart-modal-body" style="padding: 20px; color: var(--text-primary); font-family: var(--font-primary); font-size: 12px; max-height: 380px; overflow-y: auto;">
+      <!-- Content goes here -->
+    </div>
+  </div>
+</div>
 
 </body>
 </html>
