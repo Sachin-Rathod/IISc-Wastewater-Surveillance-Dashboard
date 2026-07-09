@@ -2720,6 +2720,10 @@ function setTrendText(id,text,cls){
 function updateTrendLegend(pkeys,series){
   var leg=document.getElementById("trend-legend");
   if(!leg)return;
+  if(STATE.selectedPathogen !== "All"){
+    leg.innerHTML="";
+    return;
+  }
   leg.innerHTML=pkeys.map(function(k){
     var vals=(series[k]||[]).filter(function(v){return typeof v==="number"&&isFinite(v);});
     var latest=vals.length?fmtTrendIndex(vals[vals.length-1]):"--";
@@ -2733,6 +2737,15 @@ function updateTrendLegend(pkeys,series){
 
 function updateTrendSummary(dates,series,byDate,pkeys){
   setTrendText("trend-window-label",getTrendWindowLabel());
+  if(STATE.selectedPathogen === "All"){
+    setTrendText("trend-latest","--");
+    setTrendText("trend-latest-date","Multiple Pathogens");
+    setTrendText("trend-direction","--","tm-value trend-flat");
+    setTrendText("trend-direction-sub","Multiple Pathogens");
+    setTrendText("trend-strongest","--");
+    setTrendText("trend-strongest-sub","Multiple Pathogens");
+    return;
+  }
   var valueDates=dates.filter(function(d,idx){
     return pkeys.some(function(k){return typeof series[k][idx]==="number"&&isFinite(series[k][idx]);});
   });
@@ -2928,11 +2941,34 @@ function renderTrend(){
       ctx.fillStyle=col;ctx.fill();
       ctx.strokeStyle=isDark()?"rgba(10,14,26,0.8)":"#fff";ctx.lineWidth=2;ctx.stroke();
 
-      var row = STATE.filtered.find(function(r){ return r.Date === dates[i]; });
-      var stpId = row ? getRowStpId(row) : "";
-      var stpObj = ALL_STPS.find(function(s){return s.id === stpId;}) || {};
-      var pmmov = row ? getPmmov(row) : null;
-      var rawCt = row ? getCtVal(row, k) : null;
+      var dayRows = STATE.filtered.filter(function(r){ return r.Date === dates[i]; });
+      var ctSum = 0, ctCount = 0;
+      var pmmovSum = 0, pmmovCount = 0;
+      dayRows.forEach(function(r){
+        var ct = getCtVal(r, k);
+        if(typeof ct === "number"){
+          ctSum += ct;
+          ctCount++;
+        }
+        var pmm = getPmmov(r);
+        if(pmm !== null){
+          pmmovSum += pmm;
+          pmmovCount++;
+        }
+      });
+      var avgCt = ctCount > 0 ? ctSum / ctCount : null;
+      var avgPmmov = pmmovCount > 0 ? pmmovSum / pmmovCount : null;
+
+      var stpFilterVal = document.getElementById("f-stp").value || "All";
+      var stpName = "Unknown";
+      if(stpFilterVal !== "All"){
+        var row = dayRows[0];
+        var stpId = row ? getRowStpId(row) : "";
+        var stpObj = ALL_STPS.find(function(s){return s.id === stpId;}) || {};
+        stpName = stpObj.name || (row ? row.STP_Name : "") || "Unknown";
+      } else {
+        stpName = "All STPs (Avg)";
+      }
 
       STATE.trendChartPoints.push({
         x: x,
@@ -2940,9 +2976,9 @@ function renderTrend(){
         date: dates[i],
         dateIdx: i,
         pathogenKey: k,
-        val: rawCt,
-        stpName: stpObj.name || (row ? row.STP_Name : "") || "Unknown",
-        pmmov: pmmov,
+        val: avgCt,
+        stpName: stpName,
+        pmmov: avgPmmov,
         viralLoad: v !== null ? v.toFixed(2) : "N/A"
       });
     });
@@ -3619,7 +3655,7 @@ function initTrendChartInteractions(){
       
       var stpVal = document.getElementById("f-stp").value || "All";
       var stpName = stpVal === "All" ? "All STPs (Avg)" : closest.stpName;
-      var pmmovVal = closest.pmmov !== null ? closest.pmmov.toFixed(4) : "1.0000";
+      var pmmovVal = closest.pmmov !== null ? closest.pmmov.toFixed(4) : "N/A";
       
       tooltip.innerHTML = '<div style="border-bottom: 1px solid var(--border); padding-bottom: 4px; margin-bottom: 6px; font-weight: 800; color: var(--accent);">' + closest.date + '</div>' +
         '<b>STP:</b> ' + stpName + '<br>' +
